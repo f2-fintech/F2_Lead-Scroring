@@ -828,9 +828,11 @@
 
 <script>
 // ============================================================
-// CONFIG — change this if your Flask server runs elsewhere
+// CONFIG — dynamic API base (works on localhost, EC2 IP, or custom domain)
 // ============================================================
-const API_BASE = "http://localhost:5000";
+const API_BASE = (window.location.origin && window.location.origin !== "null" && window.location.protocol.startsWith("http"))
+  ? window.location.origin
+  : "http://localhost:5000";
 
 const AUTH_STORAGE_KEY = "leadscoring_auth";
 let authToken = null;
