@@ -9,21 +9,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* Blue / white / dark blue */
-    --navy-950: #061538;
-    --navy: #0B2259;            /* dark blue: header, headings */
-    --navy-light: #17337A;
-    --blue: #1F5FD6;            /* main action colour */
-    --blue-dark: #1749A8;
-    --blue-soft: #E3ECFD;       /* tint for selected / hover */
-    --ink: #0C1B3F;             /* body text */
-    --slate: #5A6E94;           /* secondary text */
-    --line: #D8E2F4;
-    --bg: #EDF3FD;              /* page background: pale blue */
+    /* Clean modern palette */
+    --navy-950: #0f172a;
+    --navy: #1e293b;            /* modern dark slate */
+    --navy-light: #334155;
+    --blue: #2563eb;            /* vibrant modern blue */
+    --blue-dark: #1d4ed8;
+    --blue-soft: #eff6ff;       /* light blue tint */
+    --ink: #0f172a;             /* body text */
+    --slate: #64748b;           /* secondary text */
+    --line: #e2e8f0;            /* subtle border */
+    --bg: #f8fafc;              /* clean page background */
     --card: #FFFFFF;
-    --accent: #1F5FD6;
-    --danger: #B4332A;
-    --danger-soft: #FDECEA;
+    --accent: #2563eb;
+    --danger: #ef4444;
+    --danger-soft: #fef2f2;
 
     /* Bucket colours: one blue ramp, darkest = best */
     --b-excellent: #0A1F4D;
@@ -90,26 +90,28 @@
   /* ---------------------------------------------------- top bar */
   #app-screen { display: block; }
   .topbar {
-    position: sticky; top: 0; z-index: 30; height: 60px;
-    background: var(--navy); color: #fff;
-    display: flex; align-items: center; gap: 28px; padding: 0 24px;
+    position: sticky; top: 0; z-index: 30; height: 50px;
+    background: #ffffff; color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 18px;
   }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
-  .tabs { display: flex; gap: 2px; height: 100%; flex: 1; overflow-x: auto; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; letter-spacing: -.01em; color: #0f172a; }
+  .tabs { display: flex; gap: 4px; height: 100%; flex: 1; overflow-x: auto; }
   .tab-btn {
-    background: none; border: none; padding: 0 16px; color: #A9BDE8; cursor: pointer;
+    background: none; border: none; padding: 0 14px; color: #64748b; cursor: pointer;
     font-size: 13px; font-weight: 600; white-space: nowrap; height: 100%;
-    border-bottom: 3px solid transparent;
+    border-bottom: 2px solid transparent; transition: all .15s ease;
   }
-  .tab-btn:hover { color: #fff; }
-  .tab-btn.active { color: #fff; border-bottom-color: #6FA3FF; }
-  .who { display: flex; align-items: center; gap: 12px; }
-  .status { font-size: 12px; color: #A9BDE8; }
-  #logout-btn {
-    background: transparent; border: 1px solid #34508F; color: #D5E1F8;
-    padding: 6px 12px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 600;
-  }
-  #logout-btn:hover { background: var(--navy-light); }
+  .tab-btn:hover { color: #0f172a; }
+  .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 700; }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .status { font-size: 12px; color: #64748b; }
+  #logout-btn { display: none; }
+
+  /* Embedded inside CRM iframe */
+  body.embedded .brand { display: none; }
+  body.embedded .topbar { height: 44px; padding: 0 12px; }
+  body.embedded .shell { padding: 12px 14px 40px; }
 
   /* ---------------------------------------------------- new user box */
   .link-btn { background: none; border: none; padding: 0; color: var(--blue); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
@@ -401,10 +403,11 @@
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   /* ---------------------------------------------------- data chip (top bar) */
   .data-chip {
-    background: transparent; border: 1px solid #34508F; color: #D5E1F8; cursor: pointer;
-    border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; cursor: pointer;
+    border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 600; white-space: nowrap;
+    transition: background .12s, color .12s;
   }
-  .data-chip:hover { background: var(--navy-light); }
+  .data-chip:hover { background: #e2e8f0; color: #0f172a; }
 
   /* ---------------------------------------------------- filter tabs (inside the filter panel) */
   .ftabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border-bottom: 1px solid var(--line); }
@@ -827,6 +830,9 @@
 </div>
 
 <script>
+if (window.self !== window.top) {
+  document.body.classList.add("embedded");
+}
 // ============================================================
 // CONFIG — dynamic API base (works on localhost, EC2 IP, or custom domain)
 // ============================================================
