@@ -1,0 +1,30 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+cache/
+
+# Sensitive environment and credentials
+.env
+*.pem
+*.key
+swift-icon-*.json
+service-account*.json
+
+# Logs
+logs/
+*.log
+
+# Data files / temporary exports
+*.xlsx
+*.csv
+
+# System files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Scoring Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Blue / white / dark blue */
+    --navy-950: #061538;
+    --navy: #0B2259;            /* dark blue: header, headings */
+    --navy-light: #17337A;
+    --blue: #1F5FD6;            /* main action colour */
+    --blue-dark: #1749A8;
+    --blue-soft: #E3ECFD;       /* tint for selected / hover */
+    --ink: #0C1B3F;             /* body text */
+    --slate: #5A6E94;           /* secondary text */
+    --line: #D8E2F4;
+    --bg: #EDF3FD;              /* page background: pale blue */
+    --card: #FFFFFF;
+    --accent: #1F5FD6;
+    --danger: #B4332A;
+    --danger-soft: #FDECEA;
+
+    /* Bucket colours: one blue ramp, darkest = best */
+    --b-excellent: #0A1F4D;
+    --b-good: #17469F;
+    --b-medium: #2F6FE6;
+    --b-low: #86AEF5;
+    --b-verylow: #C9DBFA;
+    /* names the older JS / inline styles still use */
+    --excellent: var(--b-excellent);
+    --good: var(--b-good);
+    --medium: var(--b-medium);
+    --low: var(--b-low);
+    --very-low: var(--b-verylow);
+
+    --radius: 8px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 76px; }
+  body {
+    margin: 0;
+    font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  button { font: inherit; }
+  a { color: var(--blue); }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* ---------------------------------------------------- login (disabled) */
+  #login-screen {
+    display: none !important;
+  }
+  .login-card {
+    max-width: 400px; margin: 9vh auto 0; background: #fff;
+    border-radius: var(--radius-lg); padding: 32px 32px 26px;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,.55);
+  }
+  .login-card h2 { margin: 16px 0 2px; font-size: 22px; color: var(--navy); letter-spacing: -.01em; }
+  .login-card p.sub { color: var(--slate); font-size: 13px; margin: 0 0 6px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin: 14px 0 5px; }
+  input[type=text], input[type=password], input[type=month], input[type=date], select, textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: var(--radius);
+    font: inherit; font-size: 13px; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--blue); outline-offset: 0; border-color: var(--blue); }
+  #login-btn { width: 100%; margin-top: 18px; padding: 11px; }
+  .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 16px; }
+
+  /* logo mark: five rising bars = the five buckets */
+  .mark { display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; }
+  .mark i { display: block; width: 5px; border-radius: 2px; }
+  .mark i:nth-child(1) { height: 7px;  background: var(--b-verylow); }
+  .mark i:nth-child(2) { height: 11px; background: var(--b-low); }
+  .mark i:nth-child(3) { height: 15px; background: var(--b-medium); }
+  .mark i:nth-child(4) { height: 19px; background: #5C94F2; }
+  .mark i:nth-child(5) { height: 22px; background: #fff; }
+  .login-card .mark i:nth-child(5) { background: var(--navy); }
+  .login-card .mark i:nth-child(4) { background: var(--b-good); }
+
+  /* ---------------------------------------------------- top bar */
+  #app-screen { display: block; }
+  .topbar {
+    position: sticky; top: 0; z-index: 30; height: 60px;
+    background: var(--navy); color: #fff;
+    display: flex; align-items: center; gap: 28px; padding: 0 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
+  .tabs { display: flex; gap: 2px; height: 100%; flex: 1; overflow-x: auto; }
+  .tab-btn {
+    background: none; border: none; padding: 0 16px; color: #A9BDE8; cursor: pointer;
+    font-size: 13px; font-weight: 600; white-space: nowrap; height: 100%;
+    border-bottom: 3px solid transparent;
+  }
+  .tab-btn:hover { color: #fff; }
+  .tab-btn.active { color: #fff; border-bottom-color: #6FA3FF; }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .status { font-size: 12px; color: #A9BDE8; }
+  #logout-btn {
+    background: transparent; border: 1px solid #34508F; color: #D5E1F8;
+    padding: 6px 12px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  #logout-btn:hover { background: var(--navy-light); }
+
+  /* ---------------------------------------------------- new user box */
+  .link-btn { background: none; border: none; padding: 0; color: var(--blue); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+  #newuser-open-btn {
+    background: transparent; border: 1px solid #34508F; color: #D5E1F8;
+    padding: 6px 12px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  #newuser-open-btn:hover { background: var(--navy-light); }
+  #newuser-modal { position: fixed; inset: 0; z-index: 100; display: none; overflow: auto; background: rgba(8,16,40,.72); }
+  .newuser-card { max-width: 420px; margin: 7vh auto 30px; background: #fff; border-radius: var(--radius-lg); padding: 26px 28px 22px; box-shadow: 0 24px 60px -20px rgba(0,0,0,.55); }
+  .newuser-card h3 { margin: 0 0 2px; font-size: 18px; color: var(--navy); }
+  .newuser-card .sec { margin: 16px 0 0; padding-top: 4px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: .04em; }
+  .newuser-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .newuser-actions button.primary { flex: 1; }
+  .ok-msg { color: #1B7A43; font-size: 13px; margin-top: 10px; min-height: 16px; }
+
+  .shell { max-width: 1520px; margin: 0 auto; padding: 22px 24px 70px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---------------------------------------------------- buttons */
+  button.primary {
+    background: var(--blue); color: #fff; border: none; border-radius: var(--radius);
+    padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s;
+  }
+  button.primary:hover { background: var(--blue-dark); }
+  button.primary:disabled { opacity: .6; cursor: progress; }
+  .view-btn, .small-btn {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--navy);
+  }
+  .view-btn:hover, .small-btn:hover { background: var(--blue-soft); border-color: #BCD0F5; }
+  .small-btn:disabled { opacity: .5; cursor: default; }
+
+  /* two-way switch (Secured / Unsecured) */
+  .bucket-type-toggle { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+  .bucket-type-toggle button {
+    border: 0; background: transparent; padding: 7px 18px; border-radius: 8px;
+    font-weight: 700; font-size: 13px; color: var(--slate); cursor: pointer;
+  }
+  .bucket-type-toggle button.active { background: var(--navy); color: #fff; }
+
+  /* ---------------------------------------------------- cards / common */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 14px; }
+  .lead-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #E8EEF9; }
+  .lead-row:last-child { border-bottom: none; }
+  .lead-name { font-weight: 700; font-size: 14px; }
+  .lead-sub { font-size: 12px; color: var(--slate); margin-top: 2px; }
+  .badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .empty-state { text-align: center; color: var(--slate); padding: 40px 0; font-size: 14px; }
+  .loading { color: var(--slate); font-size: 13px; padding: 10px 0; }
+  .hint { font-size: 11.5px; color: var(--slate); margin: 5px 0 0; }
+  .note { background: var(--blue-soft); color: var(--navy); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin: 10px 0; }
+
+  .badge {
+    display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px; white-space: nowrap; color: #fff;
+  }
+  .badge[data-b="Excellent"] { background: var(--b-excellent); }
+  .badge[data-b="Good"] { background: var(--b-good); }
+  .badge[data-b="Medium"] { background: var(--b-medium); }
+  .badge[data-b="Low"] { background: var(--b-low); color: var(--navy); }
+  .badge[data-b="Very Low"] { background: var(--b-verylow); color: var(--navy); }
+  .badge[data-b="Insufficient data"] { background: #fff; color: var(--slate); border: 1px dashed #9FB2D6; }
+  .badge[data-b="Unknown"], .badge[data-b="null"] { background: #E8EDF7; color: var(--slate); }
+
+  .tag { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--slate); white-space: nowrap; }
+  .tag.ok { background: var(--blue-soft); color: var(--b-good); border-color: #C5D7F8; }
+  .tag.ended { background: #F1F3F8; color: var(--slate); }
+
+  /* ---------------------------------------------------- Buckets & Filters layout */
+  .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .layout.rail-hidden { grid-template-columns: minmax(0, 1fr); }
+  .layout.rail-hidden .rail { display: none; }
+
+  .rail {
+    position: sticky; top: 76px; max-height: calc(100vh - 92px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+    box-shadow: 0 1px 2px rgba(11,34,89,.04), 0 8px 24px -12px rgba(11,34,89,.14);
+  }
+  .rail-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px 16px; background: #F4F8FE; border-bottom: 1px solid var(--line);
+  }
+  .rail-head > div { display: flex; align-items: center; }
+  .rail-head strong { font-size: 15px; font-weight: 800; color: var(--navy); letter-spacing: -.01em; }
+  .rail-head .small-btn { border: none; background: transparent; color: var(--blue); padding: 4px 8px; }
+  .rail-head .small-btn:hover { background: var(--blue-soft); }
+  .active-count { margin-left: 8px; font-size: 11px; font-weight: 700; color: #fff; background: var(--blue); border-radius: 999px; padding: 2px 9px; }
+  .active-count:empty { display: none; }
+  .rail-scroll { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #C3D3F0 transparent; }
+  .rail-foot { border-top: 1px solid var(--line); padding: 12px 16px; background: #fff; box-shadow: 0 -6px 12px -10px rgba(11,34,89,.25); }
+  .rail-foot button { width: 100%; padding: 11px; }
+  #f-message { min-height: 0; margin: 0 0 8px; }
+  #f-message:empty { display: none; }
+
+  /* inputs inside the filter panel: smaller and tidier */
+  .rail input[type=text], .rail input[type=month], .rail select {
+    height: 36px; padding: 0 10px; font-size: 13px; background: #FAFCFF;
+  }
+  .rail input::placeholder { color: #8B9CBF; }
+  .rail input:hover, .rail select:hover { border-color: #B5C8EC; }
+  .rail input:focus, .rail select:focus { background: #fff; }
+
+  /* filter sections */
+  details.fsec { border-bottom: 1px solid var(--line); }
+  details.fsec:last-child { border-bottom: none; }
+  details.fsec > summary {
+    list-style: none; cursor: pointer; padding: 14px 16px; font-weight: 700; font-size: 13.5px; color: var(--navy);
+    display: flex; justify-content: space-between; align-items: center;
+    border-left: 3px solid transparent; transition: background .12s;
+  }
+  details.fsec > summary:hover { background: #F7FAFF; }
+  details.fsec[open] > summary { border-left-color: var(--blue); }
+  details.fsec > summary::-webkit-details-marker { display: none; }
+  details.fsec > summary::after, details.dd > summary::after {
+    content: ""; width: 7px; height: 7px; margin-left: 8px; flex: none;
+    border-right: 2px solid var(--slate); border-bottom: 2px solid var(--slate);
+    transform: rotate(45deg); transition: transform .15s;
+  }
+  details.fsec[open] > summary::after, details.dd[open] > summary::after { transform: rotate(-135deg); }
+  .fsec-body { padding: 4px 16px 18px 19px; }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .flabel { display: block; font-size: 12px; font-weight: 600; color: var(--slate); margin: 0 0 6px; }
+  .range { display: grid; grid-template-columns: 1fr 10px 1fr; gap: 6px; align-items: center; }
+  .range .dash { color: #9AA9C8; font-size: 0; text-align: center; position: relative; height: 1px; }
+  .range .dash::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1.5px; background: #B9C7E3; }
+  .fsec-body > .hint:first-child { margin: 0 0 14px; }
+
+  /* tick-boxes shown as pills */
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  label.chk {
+    position: relative; display: inline-flex; align-items: center; margin: 0; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: var(--navy); background: #fff;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px;
+    transition: background .12s, border-color .12s;
+  }
+  label.chk[hidden], button[hidden] { display: none; }
+  label.chk input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+  label.chk:hover { border-color: #9DB8EE; background: #F7FAFF; }
+  label.chk:has(input:checked) { background: var(--blue); border-color: var(--blue); color: #fff; }
+  label.chk:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* multi-select drop-downs */
+  details.dd { border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 10px; background: #FAFCFF; }
+  details.dd:hover { border-color: #B5C8EC; }
+  details.dd > summary { list-style: none; cursor: pointer; padding: 0 12px; height: 36px; font-size: 13px; font-weight: 600; color: var(--ink); display: flex; align-items: center; }
+  details.dd > summary::-webkit-details-marker { display: none; }
+  details.dd > summary > span:first-child { flex: 1; }
+  details.dd[open] { border-color: var(--blue); background: #fff; }
+  .dd-count { background: var(--blue); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; line-height: 18px; }
+  .dd-count:empty { display: none; }
+  .dd-body { padding: 10px 12px 12px; max-height: 230px; overflow-y: auto; border-top: 1px solid var(--line); scrollbar-width: thin; }
+  .dd-search { margin-bottom: 8px; }
+
+  /* loans by size: name on top, min/max underneath */
+  .slab { display: block; margin-bottom: 12px; }
+  .slab:last-child { margin-bottom: 0; }
+  .slab-name { display: flex; align-items: baseline; gap: 6px; font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+  .slab-name small { display: inline; font-weight: 400; color: var(--slate); font-size: 11px; }
+  .lm-row details.dd { grid-column: 1 / -1; margin: 0; }
+  .lm-row .lm-lab { grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: var(--slate); margin-top: 2px; }
+  .lm-mode { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; margin: 0 0 10px; }
+  .lm-mode label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .lm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; margin-bottom: 10px; background: #F4F8FE; border: 1px solid var(--line); border-radius: 10px; }
+  .lm-row select { grid-column: 1 / -1; }
+  .lm-row .lm-remove { grid-column: 1 / -1; justify-self: end; border: none; background: transparent; color: var(--danger); padding: 2px 6px; }
+  .lm-row .lm-remove:hover { background: var(--danger-soft); }
+  #add-loan-row-btn { width: 100%; border-style: dashed; color: var(--blue); padding: 8px; }
+
+  /* ---------------------------------------------------- results */
+  .results-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .results-top .lead-sub { margin: 0; flex: 1; min-width: 200px; }
+
+  .ladder { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .bucket-cell {
+    --bc: var(--line);
+    position: relative; display: flex; flex-direction: column; text-align: left; font: inherit; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 14px 14px 12px 18px; cursor: pointer; overflow: hidden; transition: border-color .15s, box-shadow .15s;
+  }
+  .bucket-cell::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--bc); }
+  .bucket-cell[data-b="Excellent"] { --bc: var(--b-excellent); }
+  .bucket-cell[data-b="Good"] { --bc: var(--b-good); }
+  .bucket-cell[data-b="Medium"] { --bc: var(--b-medium); }
+  .bucket-cell[data-b="Low"] { --bc: var(--b-low); }
+  .bucket-cell[data-b="Very Low"] { --bc: var(--b-verylow); }
+  .bucket-cell[data-b="Insufficient data"] { background: repeating-linear-gradient(135deg, #fff 0 8px, #F3F7FE 8px 16px); border-style: dashed; }
+  .bucket-cell:hover { border-color: #9DB8EE; }
+  .bucket-cell.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue) inset; }
+  .bucket-cell .label { order: -1; font-size: 13px; font-weight: 700; color: var(--navy); }
+  .bucket-cell .count { font-size: 32px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: 6px 0 2px; }
+  .bucket-cell .share, .bucket-cell .avg { font-size: 12px; color: var(--slate); }
+  .bucket-cell .bar { display: block; height: 6px; background: #EEF3FC; border-radius: 99px; margin: 8px 0; overflow: hidden; }
+  .bucket-cell .bar i { display: block; height: 100%; border-radius: 99px; background: var(--bc, var(--blue)); }
+  .bucket-cell[data-b="Very Low"] .bar i { background: #9DBBF0; }
+
+  .results-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .results-card-head .ttl { font-weight: 800; font-size: 15px; color: var(--navy); }
+  .table-wrap { overflow-x: auto; }
+  table.leads { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  table.leads th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 700; color: var(--slate); background: #F4F8FE; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.leads th:first-child { border-top-left-radius: 10px; }
+  table.leads th:last-child { border-top-right-radius: 10px; }
+  table.leads td { padding: 12px; border-bottom: 1px solid #E8EEF9; vertical-align: top; }
+  table.leads tbody tr:hover td { background: #F7FAFF; }
+  td.remark { max-width: 200px; color: #2B3C5F; }
+  table.loans td, table.loans th { white-space: nowrap; }
+  .minis { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .mini { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--slate); }
+  .mini.up { background: var(--blue-soft); color: var(--b-good); }
+  .mini.down, .mini.cap { background: var(--danger-soft); color: var(--danger); }
+  .pager { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 14px; font-size: 12px; color: var(--slate); }
+
+  /* ---------------------------------------------------- priority slots (unsecured) */
+  .slots { margin-top: 18px; }
+  .slots-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .slots-head strong { font-size: 14px; color: var(--navy); }
+  .slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .slot-cell {
+    display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "chip title count" "desc desc desc";
+    gap: 6px 10px; align-items: center; text-align: left; font: inherit; color: var(--ink);
+    background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .slot-cell:hover { border-color: #9DB8EE; }
+  .slot-cell.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue) inset; }
+  .slot-cell .slot { grid-area: chip; }
+  .slot-cell .stitle { grid-area: title; font-weight: 700; font-size: 13px; color: var(--navy); }
+  .slot-cell .scount { grid-area: count; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .slot-cell .sdesc { grid-area: desc; font-size: 11.5px; color: var(--slate); line-height: 1.4; }
+  .slot {
+    display: inline-grid; place-items: center; min-width: 30px; height: 24px; padding: 0 7px;
+    border-radius: 6px; font-size: 12px; font-weight: 800; letter-spacing: .02em;
+  }
+  .slot[data-s="P1"] { background: var(--blue); color: #fff; }
+  .slot[data-s="P2"] { background: #D9E6FC; color: var(--navy); }
+  .slot[data-s="P3"] { background: #E3E8F1; color: #44557A; }
+  .slot[data-s="P4"] { background: #fff; color: var(--slate); border: 1px dashed #9FB2D6; }
+  .slot-detail { display: flex; gap: 12px; align-items: flex-start; background: #F4F8FE; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+
+  /* ---------------------------------------------------- lead detail */
+  .search-row { display: flex; gap: 8px; margin-bottom: 16px; max-width: 560px; }
+  .search-row input { flex: 1; }
+  .search-row button { padding: 9px 20px; border-radius: var(--radius); border: none; background: var(--blue); color: #fff; cursor: pointer; font-size: 13px; font-weight: 700; }
+  .detail-section { margin-bottom: 22px; }
+  .detail-section h4 { font-size: 14px; font-weight: 800; color: var(--navy); margin: 0 0 10px; }
+  .kv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kv { background: #F4F8FE; border-radius: 10px; padding: 10px 12px; }
+  .kv .k { font-size: 11.5px; color: var(--slate); }
+  .kv .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
+  .explanation-block { font-size: 14px; line-height: 1.6; color: #22345A; }
+  .factor-list { margin: 6px 0 0 18px; padding: 0; font-size: 13px; }
+
+  .path { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 10px; margin: 12px 0 8px; }
+  .path .step { position: relative; background: #F4F8FE; border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 12px 14px; }
+  .path .step.final { background: #fff; border: 2px solid var(--navy); }
+  .path .n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+  .path .t { font-size: 12px; font-weight: 700; color: var(--slate); }
+  .path .v { font-size: 19px; font-weight: 800; margin: 3px 0; color: var(--navy); }
+  .path .s { font-size: 12px; color: var(--slate); line-height: 1.4; }
+  .qchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .qchip { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; }
+  .qchip.plus { background: var(--blue-soft); color: var(--b-good); }
+  .qchip.minus { background: var(--danger-soft); color: var(--danger); }
+
+  /* ---------------------------------------------------- how buckets work */
+  .doc { max-width: 920px; }
+  .doc h2 { font-size: 20px; color: var(--navy); margin: 0 0 4px; letter-spacing: -.01em; }
+  .doc h3 { font-size: 15px; color: var(--navy); margin: 0 0 8px; }
+  .doc p { margin: 0 0 10px; color: #22345A; line-height: 1.6; }
+  .doc ul { margin: 0 0 10px 18px; padding: 0; color: #22345A; line-height: 1.6; }
+  .doc table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 10px; }
+  .doc th { text-align: left; padding: 8px 10px; background: #F4F8FE; color: var(--slate); font-size: 12px; border-bottom: 1px solid var(--line); }
+  .doc td { padding: 8px 10px; border-bottom: 1px solid #E8EEF9; }
+  .doc code { background: var(--blue-soft); color: var(--navy); padding: 1px 6px; border-radius: 6px; font-size: 12.5px; }
+  .doc .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  @media (max-width: 1000px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .rail { position: static; max-height: none; }
+    .topbar { gap: 12px; padding: 0 12px; }
+    .status { display: none; }
+    .kv-grid { grid-template-columns: repeat(2, 1fr); }
+    .doc .two { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  /* ---------------------------------------------------- data chip (top bar) */
+  .data-chip {
+    background: transparent; border: 1px solid #34508F; color: #D5E1F8; cursor: pointer;
+    border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .data-chip:hover { background: var(--navy-light); }
+
+  /* ---------------------------------------------------- filter tabs (inside the filter panel) */
+  .ftabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #fff; border-bottom: 1px solid var(--line); }
+  .ftab {
+    background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+    padding: 11px 0 10px; font-size: 12px; font-weight: 700; color: var(--slate);
+    display: flex; align-items: center; justify-content: center; gap: 3px; white-space: nowrap; min-width: 0;
+  }
+  .ftab:hover { color: var(--navy); background: #F7FAFF; }
+  .ftab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .ftab-count { background: var(--blue); color: #fff; border-radius: 999px; font-size: 10px; line-height: 15px; min-width: 15px; padding: 0 4px; text-align: center; }
+  .ftab-count:empty { display: none; }
+  .ftab-panel { display: none; }
+  .ftab-panel.active { display: block; }
+  .ftab-title { padding: 14px 16px 6px 19px; font-size: 13.5px; font-weight: 800; color: var(--navy); }
+
+  /* ---------------------------------------------------- Ticket status colours */
+  .st { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
+  .st-disbursed { background: #E4F6EA; color: #11602F; border-color: #A9DDB9; }
+  .st-rejected  { background: #FDE8E8; color: #A61B1B; border-color: #F2B2B2; }
+  .st-approved  { background: #DDF5F3; color: #0B6B66; border-color: #9ADAD5; }
+  .st-login     { background: #E3EDFD; color: #1A4FA3; border-color: #B3CBF3; }
+  .st-hold      { background: #FFF0DB; color: #9A5400; border-color: #F2CE9A; }
+  .st-drop      { background: #ECEEF1; color: #5A6472; border-color: #CBD0D8; }
+  .st-other     { background: #F1F3F8; color: #44506A; border-color: #D5DAE5; }
+  .remark-box { border-left: 4px solid var(--line); padding: 8px 12px; margin-top: 8px; border-radius: 6px; background: #F8FAFD; font-size: 13px; }
+  .remark-box.st-disbursed { border-left-color: #2E9E5B; background: #F3FBF6; color: inherit; }
+  .remark-box.st-rejected  { border-left-color: #D83A3A; background: #FFF6F6; color: inherit; }
+  .remark-box.st-approved  { border-left-color: #1CA79F; background: #F1FBFA; color: inherit; }
+  .remark-box.st-login     { border-left-color: #3B78D8; background: #F3F7FE; color: inherit; }
+  .remark-box.st-hold      { border-left-color: #E08A1E; background: #FFF9F0; color: inherit; }
+  .remark-box.st-drop      { border-left-color: #8A94A3; background: #F6F7F9; color: inherit; }
+  td.rm-st-disbursed { color: #11602F; } td.rm-st-rejected { color: #A61B1B; } td.rm-st-approved { color: #0B6B66; }
+  td.rm-st-login { color: #1A4FA3; } td.rm-st-hold { color: #9A5400; } td.rm-st-drop { color: #5A6472; }
+  .remark-box b { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--slate); margin-bottom: 2px; }
+  .asmt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 8px; }
+  .asmt-grid label { font-size: 12px; font-weight: 600; color: var(--slate); display: block; }
+  .asmt-grid input { width: 100%; height: 36px; margin-top: 4px; }
+  .asmt-diff { margin-top: 8px; font-size: 13px; font-weight: 600; }
+  .asmt-diff.up { color: #11602F; } .asmt-diff.down { color: #A61B1B; }
+  .asmt-item { border-left: 3px solid var(--blue); background: #F8FAFD; padding: 10px 12px; margin-top: 8px; border-radius: 6px; font-size: 13px; }
+  /* ---------------------------------------------------- Data & Ingest tab */
+  .data-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 18px; align-items: start; }
+  .data-card-title { font-size: 12px; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+  .cov-main { font-size: 30px; font-weight: 800; color: var(--navy); letter-spacing: -.02em; line-height: 1.15; }
+  .run-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  .run-row input[type=month], .run-row input[type=text], .run-row input[type=date] { width: 170px; height: 38px; }
+  .date-field { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--slate); }
+  .fetched-row { font-size: 14px; color: var(--navy); padding: 4px 0; }
+  .fetched-note { font-size: 12px; color: var(--slate); margin-top: 8px; }
+  .fetched-note.warn { color: var(--danger); }
+  .run-row input[hidden] { display: none; }
+  .run-msg { margin-top: 14px; font-size: 13px; color: var(--slate); }
+  .run-msg.err { color: var(--danger); }
+  .run-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+  .run-count { background: #F4F8FE; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .run-count b { display: block; font-size: 20px; color: var(--navy); }
+  .run-count span { font-size: 11.5px; color: var(--slate); }
+  .run-count.bad b { color: var(--danger); }
+  .prog { margin-top: 14px; }
+  .prog-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; color: var(--navy); }
+  .prog-pct { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+  .prog-track { height: 14px; border-radius: 8px; background: #E6EDF7; overflow: hidden; margin-top: 8px; }
+  .prog-fill { height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, var(--blue), #4C9BFF);
+    background-size: 28px 28px; transition: width .6s ease; }
+  .prog.live .prog-fill { background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.22) 0 8px, transparent 8px 16px); animation: stripes 1s linear infinite; }
+  @keyframes stripes { to { background-position: 28px 0; } }
+  @media (prefers-reduced-motion: reduce) { .prog.live .prog-fill { animation: none; } }
+  .prog-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; font-size: 12.5px; color: var(--slate); }
+  .prog-meta b { color: var(--navy); }
+  button.stop-btn { background: #fff; color: var(--danger); border: 1px solid var(--danger); }
+  button.stop-btn:disabled { opacity: .55; }
+  .spin {
+    display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px;
+    border: 2px solid var(--line); border-top-color: var(--blue); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+  @media (max-width: 1000px) { .data-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    <h2>Lead Scoring</h2>
+    <p class="sub">Sign in with your dashboard account</p>
+    <form id="login-form" method="post" action="#">
+      <label for="login-user">Username or email</label>
+      <input type="text" id="login-user" name="username" autocomplete="username">
+      <label for="login-pass">Password</label>
+      <input type="password" id="login-pass" name="password" autocomplete="current-password">
+      <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-weight:500;">
+        <input type="checkbox" id="remember-me" checked style="width:auto; margin:0;">
+        Keep me signed in on this computer
+      </label>
+      <button class="primary" id="login-btn" type="submit">Sign in</button>
+    </form>
+    <div class="error-msg" id="login-error"></div>
+    <p style="margin:10px 0 0;"><button type="button" class="link-btn" id="newuser-link">Create new user (admin only)</button></p>
+    <p class="sub" style="margin-top:14px; font-size:12px;">
+      Connecting to <code id="api-base-display">http://localhost:5000</code>
+    </p>
+  </div>
+</div>
+
+<div id="newuser-modal" role="dialog" aria-modal="true" aria-labelledby="newuser-title">
+  <div class="newuser-card">
+    <h3 id="newuser-title">Create new user</h3>
+    <p class="sub" style="color:var(--slate); font-size:13px; margin:0;">An admin must approve this.</p>
+    <form id="newuser-form" autocomplete="off" onsubmit="return false;">
+      <div id="nu-admin-block">
+        <div class="sec">Admin details</div>
+        <label for="nu-admin-user">Admin username or email</label>
+        <input type="text" id="nu-admin-user" autocomplete="off">
+        <label for="nu-admin-pass">Admin password</label>
+        <input type="password" id="nu-admin-pass" autocomplete="off">
+      </div>
+      <div class="sec">New user</div>
+      <label for="nu-user">New username</label>
+      <input type="text" id="nu-user" autocomplete="off">
+      <label for="nu-email">New email</label>
+      <input type="text" id="nu-email" autocomplete="off">
+      <label for="nu-pass">New password (at least 8 characters)</label>
+      <input type="password" id="nu-pass" autocomplete="new-password">
+      <div class="error-msg" id="nu-error"></div>
+      <div class="ok-msg" id="nu-ok"></div>
+      <div class="newuser-actions">
+        <button class="small-btn" type="button" id="nu-cancel">Close</button>
+        <button class="primary" type="submit" id="nu-submit">Create user</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="app-screen">
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>Lead Scoring</div>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab-btn active" data-tab="filtered">Buckets &amp; Filters</button>
+      <button class="tab-btn" data-tab="detail">Lead Detail</button>
+      <button class="tab-btn" data-tab="data">Data &amp; Ingest</button>
+      <button class="tab-btn" data-tab="logic">How buckets work</button>
+    </nav>
+    <div class="who">
+      <button class="data-chip" id="data-chip" type="button" title="Open Data &amp; Ingest">Data till …</button>
+      <span class="status" id="user-status"></span>
+      <button id="newuser-open-btn" type="button" style="display:none;">New user</button>
+      <button id="logout-btn" style="display:none;">Sign out</button>
+    </div>
+  </header>
+
+  <main class="shell">
+
+    <!-- ============ Buckets & Filters ============ -->
+    <div class="tab-panel active" id="tab-filtered">
+      <div class="layout" id="f-layout">
+
+        <aside class="rail" id="f-rail" aria-label="Filters">
+          <div class="rail-head">
+            <div><strong>Filters</strong><span class="active-count" id="f-active-count"></span></div>
+            <button class="small-btn" id="clear-filters-btn" type="button">Clear all</button>
+          </div>
+
+          <div class="ftabs" role="tablist" aria-label="Filter groups">
+            <button type="button" class="ftab active" role="tab" data-ftab="lead" title="Lead">Lead<span class="ftab-count"></span></button>
+            <button type="button" class="ftab" role="tab" data-ftab="person" title="About the person">Person<span class="ftab-count"></span></button>
+            <button type="button" class="ftab" role="tab" data-ftab="loans" title="Loans they already have">Loans<span class="ftab-count"></span></button>
+            <button type="button" class="ftab" role="tab" data-ftab="match" title="A particular loan">A loan<span class="ftab-count"></span></button>
+          </div>
+
+          <div class="rail-scroll">
+            <div class="ftab-panel active" data-ftab="lead" role="tabpanel">
+              <div class="ftab-title">Lead</div>
+              <div class="fsec-body">
+                <div class="field">
+                  <label class="flabel" for="f-month">Application month</label>
+                  <input type="month" id="f-month">
+                </div>
+                <div class="field">
+                  <label class="flabel" for="f-year">Or a whole year</label>
+                  <input type="text" id="f-year" placeholder="2026" inputmode="numeric">
+                  <div class="hint">Leave both empty to include every stored lead.</div>
+                </div>
+                <details class="dd" id="dd-statuses"></details>
+                <details class="dd" id="dd-states"></details>
+                <details class="dd" id="dd-loantypes"></details>
+              </div>
+            </div>
+
+            <div class="ftab-panel" data-ftab="person" role="tabpanel">
+              <div class="ftab-title">About the person</div>
+              <div class="fsec-body">
+                <div class="field">
+                  <span class="flabel">Monthly income</span>
+                  <div class="range"><input type="text" id="f-min-income" placeholder="Min" aria-label="Minimum income"><span class="dash">to</span><input type="text" id="f-max-income" placeholder="Max" aria-label="Maximum income"></div>
+                  <div class="hint">Type 50000, 2L, 1.5 lakh or 1cr.</div>
+                </div>
+                <div class="field">
+                  <span class="flabel">CIBIL score</span>
+                  <div class="range"><input type="text" id="f-min-cibil" placeholder="Min" aria-label="Minimum CIBIL"><span class="dash">to</span><input type="text" id="f-max-cibil" placeholder="Max" aria-label="Maximum CIBIL"></div>
+                </div>
+                <div class="field">
+                  <span class="flabel">Experience (years)</span>
+                  <div class="range"><input type="text" id="f-min-exp" placeholder="Min" aria-label="Minimum experience"><span class="dash">to</span><input type="text" id="f-max-exp" placeholder="Max" aria-label="Maximum experience"></div>
+                </div>
+                <div class="field"><span class="flabel">Employment type</span><div class="pills" id="chips-employment"></div></div>
+                <div class="field"><span class="flabel">Marital status</span><div class="pills" id="chips-marital"></div></div>
+                <div class="field"><span class="flabel">House type</span><div class="pills" id="chips-house"></div>
+                  <div class="hint">"Unknown" means the CAM did not say.</div></div>
+              </div>
+            </div>
+
+            <div class="ftab-panel" data-ftab="loans" role="tabpanel">
+              <div class="ftab-title">Loans they already have</div>
+              <div class="fsec-body">
+                <div class="hint" style="margin:0 0 12px;">Only loans still running today.</div>
+                <div class="field">
+                  <span class="flabel">Total loans</span>
+                  <div class="range"><input type="text" id="f-min-active" placeholder="Min" aria-label="Minimum total loans"><span class="dash">to</span><input type="text" id="f-max-active" placeholder="Max" aria-label="Maximum total loans"></div>
+                </div>
+                <div class="field">
+                  <span class="flabel">Secured loans</span>
+                  <div class="range"><input type="text" id="f-min-secured" placeholder="Min" aria-label="Minimum secured loans"><span class="dash">to</span><input type="text" id="f-max-secured" placeholder="Max" aria-label="Maximum secured loans"></div>
+                </div>
+                <div class="field">
+                  <span class="flabel">Unsecured loans</span>
+                  <div class="range"><input type="text" id="f-min-unsecured" placeholder="Min" aria-label="Minimum unsecured loans"><span class="dash">to</span><input type="text" id="f-max-unsecured" placeholder="Max" aria-label="Maximum unsecured loans"></div>
+                </div>
+                <div class="field">
+                  <span class="flabel">Number of loans by size</span>
+                  <div id="slab-rows"></div>
+                </div>
+                <div class="field">
+                  <label class="chk"><input type="checkbox" id="f-many-small"> Many small loans</label>
+                  <div class="hint" id="many-small-rule"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ftab-panel" data-ftab="match" role="tabpanel">
+              <div class="ftab-title">A particular loan</div>
+              <div class="fsec-body">
+                <div class="hint" style="margin:0 0 10px;">Each condition looks for running loans. Bank, loan type and amount must all match the same loan. Pick several banks or types to mean "any of these". Use "how many" to ask for at least 2 such loans, or 0 for none.</div>
+                <div class="lm-mode" role="radiogroup" aria-label="How conditions combine">
+                  <label><input type="radio" name="lm-mode" value="all" checked> Lead must match ALL conditions</label>
+                  <label><input type="radio" name="lm-mode" value="any"> Lead must match ANY ONE condition</label>
+                </div>
+                <div id="loan-match-rows"></div>
+                <button class="small-btn" type="button" id="add-loan-row-btn">Add another loan condition</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rail-foot">
+            <div class="lead-sub" id="f-message"></div>
+            <button class="primary" id="apply-filters-btn" type="button">Apply filters</button>
+          </div>
+        </aside>
+
+        <section class="results" aria-live="polite">
+          <div class="results-top">
+            <button class="small-btn" id="rail-toggle" type="button">Hide filters</button>
+            <div class="bucket-type-toggle">
+              <button class="active" data-fbucket-type="secured">Secured</button>
+              <button data-fbucket-type="unsecured">Unsecured</button>
+            </div>
+            <div class="lead-sub" id="f-summary"></div>
+          </div>
+
+          <div class="ladder" id="f-bucket-grid"><div class="loading">Loading…</div></div>
+
+          <div class="slots" id="f-slots" hidden>
+            <div class="slots-head">
+              <strong>Priority slots</strong>
+              <span class="lead-sub" style="margin:0;">from the credit and ops remarks, <span id="f-slots-scope"></span></span>
+            </div>
+            <div class="slot-grid" id="f-slot-grid"></div>
+          </div>
+
+          <div class="card" id="f-leads-card" style="margin-top:18px; display:none;">
+            <div class="results-card-head">
+              <div class="ttl" id="f-leads-title"></div>
+              <button class="small-btn" id="f-download-btn" type="button">Download CSV for Excel</button>
+            </div>
+            <div class="table-wrap"><table class="leads" id="f-leads-table"></table></div>
+            <div class="pager" id="f-pager"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ============ Data & Ingest ============ -->
+    <div class="tab-panel" id="tab-data">
+      <div class="data-grid">
+        <section class="card">
+          <div class="data-card-title">Data available till</div>
+          <div class="cov-main" id="cov-main">—</div>
+          <div class="lead-sub" id="cov-sub"></div>
+          <div id="cov-fetched"></div>
+        </section>
+
+        <section class="card">
+          <div class="data-card-title">Fetch leads</div>
+          <div class="lead-sub">Pick the first and last application date and press Start. Nothing is fetched until you press the button. Leads with a readable CAM are stored; the MIS remarks are attached at the end.</div>
+          <div class="run-row">
+            <label class="date-field">From <input type="date" id="run-from" aria-label="Fetch from date"></label>
+            <label class="date-field">To <input type="date" id="run-to" aria-label="Fetch to date"></label>
+            <label class="chk" title="Re-read every CAM, even those already stored and unchanged"><input type="checkbox" id="run-force"> Re-read all CAMs</label>
+            <button class="primary" id="run-btn" type="button">Start fetching</button>
+            <button class="small-btn stop-btn" id="stop-btn" type="button" hidden>Stop</button>
+          </div>
+          <div class="run-row" id="run-quick" style="margin-top:10px;">
+            <button class="small-btn" type="button" data-quick="this-month">This month</button>
+            <button class="small-btn" type="button" data-quick="last-month">Last month</button>
+            <button class="small-btn" type="button" data-quick="this-year">This year</button>
+          </div>
+          <div class="run-msg" id="run-msg"></div>
+          <div id="run-progress" aria-live="polite"></div>
+          <div id="run-result"></div>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top:18px;">
+        <div class="data-card-title">Stored leads by application month</div>
+        <div class="table-wrap"><table class="leads" id="cov-table"><tbody><tr><td class="loading">Loading…</td></tr></tbody></table></div>
+        <div class="hint">A month that is missing here has no stored leads. Leads with no CAM attached in OMS are not stored.</div>
+      </section>
+    </div>
+
+    <!-- ============ Lead Detail ============ -->
+    <div class="tab-panel" id="tab-detail">
+      <div class="search-row">
+        <input type="text" id="phone-search-input" placeholder="Search by phone number" aria-label="Phone number">
+        <button id="phone-search-btn">Search</button>
+      </div>
+      <div id="phone-search-results"></div>
+      <div id="detail-result"><div class="empty-state">Search by phone number, or open a lead from Buckets &amp; Filters.</div></div>
+    </div>
+
+    <!-- ============ How buckets work ============ -->
+    <div class="tab-panel" id="tab-logic">
+      <div class="doc">
+        <h2>How the buckets are decided</h2>
+        <p>Every bucket comes from plain arithmetic on what the CAM says. The AI never decides a bucket; it only explains one afterwards.</p>
+
+        <div class="card">
+          <h3>Secured bucket: three steps</h3>
+
+          <p><strong>Step 1. Capacity: how big a loan can this person repay?</strong></p>
+          <ul>
+            <li>Monthly surplus = income × FOIR − EMIs of loans still running today − monthly commitments (SIP, insurance and similar) found in the CAM.</li>
+            <li>Tenure = the smaller of 20 years and (70 − age). 70 is the last age we fund a secured loan, so the closer to 70, the shorter the tenure and the smaller the amount. Above 70 there is no tenure and no secured loan. If the age is unknown, 20 years is assumed.</li>
+            <li>Loan amount = surplus × the number of months in the tenure. No interest rate is assumed. For example, 20 years is 240 months, 10 years is 120 months and 5 years is 60 months.</li>
+            <li>Any loan we already disbursed to the same customer is subtracted.</li>
+          </ul>
+          <table>
+            <tr><th>Loan amount</th><th>Capacity bucket</th></tr>
+            <tr><td>Above 5 Cr</td><td><span class="badge" data-b="Excellent">Excellent</span></td></tr>
+            <tr><td>Above 3 Cr</td><td><span class="badge" data-b="Good">Good</span></td></tr>
+            <tr><td>1 Cr to 3 Cr</td><td><span class="badge" data-b="Medium">Medium</span></td></tr>
+            <tr><td>Below 1 Cr</td><td><span class="badge" data-b="Low">Low</span></td></tr>
+          </table>
+
+          <p><strong>Step 2. Quality: can the person's profile move the bucket by one step?</strong></p>
+          <table>
+            <tr><th>Points</th><th>When</th></tr>
+            <tr><td>+1</td><td>Lives in an owned house</td></tr>
+            <tr><td>+1</td><td>Doctors: more than 7 years of experience with a graduate degree (MBBS, BDS ...), or 5 or more years with a postgraduate degree (MD, MS ...). Everyone else: 5 or more years.</td></tr>
+            <tr><td>+1 or +2</td><td>Investments and reserves (FD, mutual funds, shares and similar, added together) more than 20 lakh is +1, more than 50 lakh is +2. Only what the CAM shows is counted.</td></tr>
+            <tr><td>−1</td><td>Rented house with family (married), or a hostel / PG. Rented with marital status unknown is also −1.</td></tr>
+            <tr><td>−2</td><td>Rented house, living single (unmarried)</td></tr>
+            <tr><td>−1 or −2</td><td>3 to 4 credit enquiries in 3 months is −1, 5 or more is −2. More than 10 in 6 months is −2. The worse of the two counts.</td></tr>
+            <tr><td>−1 or −2</td><td>5 or more small running loans (under 5 lakh) whose EMIs together take 10% to 20% of income is −1, over 20% is −2. Small EMIs are not punished.</td></tr>
+          </table>
+          <p>A total of <strong>+2 or more moves the bucket one step up</strong>. A total of <strong>−2 or less moves it one step down</strong>. It never moves more than one step, and it never lifts a lead that has no capacity left.</p>
+
+          <p><strong>Step 3. Caps: hard limits that can only lower the bucket.</strong></p>
+          <table>
+            <tr><th>CIBIL score</th><th>Highest bucket (secured and unsecured)</th></tr>
+            <tr><td>Above 750</td><td>No cap</td></tr>
+            <tr><td>700 to 750</td><td><span class="badge" data-b="Good">Good</span></td></tr>
+            <tr><td>651 to 699</td><td><span class="badge" data-b="Medium">Medium</span></td></tr>
+            <tr><td>650 or below</td><td><span class="badge" data-b="Low">Low</span></td></tr>
+          </table>
+          <p>Age is handled in step 1 through the tenure (secured loans end at age 70). If the CAM does not give income or FOIR, the lead shows <span class="badge" data-b="Insufficient data">Insufficient data</span> instead of a bucket.</p>
+        </div>
+
+        <div class="card">
+          <h3>Unsecured bucket</h3>
+          <ul>
+            <li>Loan amount = surplus ÷ 2 × 100, minus anything we already disbursed to the same customer.</li>
+            <li>Above 2.5 Cr is Excellent, above 1.5 Cr Good, above 50 L Medium, above 25 L Low, otherwise Very Low.</li>
+            <li>The last age we fund an unsecured loan is 65. Above 65 nothing can be funded (eligibility 0, Very Low, no exceptions). Ages 60 to 65 are capped at Low. Negative remaining capacity is capped at Low.</li>
+            <li>The CIBIL cap in the table above applies to unsecured too.</li>
+            <li>There is no quality step for unsecured.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Priority slots for unsecured leads</h3>
+          <p>The slot comes from the MIS credit and ops remarks. It is plain keyword matching, and the dashboard shows which words decided it.</p>
+          <table>
+            <tr><th style="width:170px;">Slot</th><th>What the remarks show</th></tr>
+            <tr><td><span class="slot" data-s="P1">P1</span> Act now</td><td>Eligibility mentioned, more than 3 enquiries, OGL, RCU, PD call not attended, CIBIL good, documents problem, or customer not picking up</td></tr>
+            <tr><td><span class="slot" data-s="P2">P2</span> Fix in 3 months</td><td>Bounces in the last 3 months, eligibility short or "not eligible", or any other reason that can be sorted out</td></tr>
+            <tr><td><span class="slot" data-s="P3">P3</span> Hard to fix</td><td>CIBIL low, 3 or more unsecured loans, bounces older than 3 months, or a very negative reason that will not clear in 3 months (written off, settled, legal case, fraud, FOIR or income too weak)</td></tr>
+            <tr><td><span class="slot" data-s="P4">P4</span> No remark</td><td>Neither a credit remark nor an ops remark was given</td></tr>
+          </table>
+          <p>If a lead matches reasons from more than one slot, it goes to the most serious one. For example, CIBIL good plus a bounce in the last 3 months is P2, and customer not picking up plus low CIBIL is P3. The rules and keywords live in <code>remark_slots.py</code>.</p>
+        </div>
+
+        <p class="lead-sub">All the numbers above (rate, tenure, retirement age, points, thresholds) live at the top of <code>financial_analysis.py</code>. If you change them there, update this page too.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — change this if your Flask server runs elsewhere
+// ============================================================
+const API_BASE = "http://localhost:5000";
+
+const AUTH_STORAGE_KEY = "leadscoring_auth";
+let authToken = null;
+
+function saveAuth(token, user) {
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token, user }));
+  } catch (e) {
+    // localStorage can fail (private browsing, storage disabled) - login
+    // still works for this session, it just won't be remembered.
+    console.warn("Could not save login for next time:", e);
+  }
+}
+
+function loadSavedAuth() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Only the USERNAME is remembered for the next visit (never the password).
+// The browser's own password manager can fill the password, because the
+// login is a real <form>.
+const USERNAME_STORAGE_KEY = "leadscoring_last_username";
+
+function saveUsername(name) {
+  try { localStorage.setItem(USERNAME_STORAGE_KEY, name); } catch (e) { /* ignore */ }
+}
+
+function loadUsername() {
+  try { return localStorage.getItem(USERNAME_STORAGE_KEY) || ""; } catch (e) { return ""; }
+}
+
+// Asks the browser (Chrome / Edge) to save the login, the same way Gmail
+// does: "Save password?". The password goes into the BROWSER's own password
+// manager - this page never stores it.
+function offerToSavePassword(username, password) {
+  try {
+    if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
+      const cred = new PasswordCredential({ id: username, password: password, name: username });
+      navigator.credentials.store(cred).catch(() => {});
+    }
+  } catch (e) { /* the normal form save prompt still works */ }
+}
+
+// On the login screen: if the browser already has a saved login for this
+// site, fill in the username and password automatically.
+async function fillSavedLogin() {
+  try {
+    if (!(window.PasswordCredential && navigator.credentials && navigator.credentials.get)) return;
+    const cred = await navigator.credentials.get({ password: true, mediation: "optional" });
+    if (cred && cred.id) {
+      document.getElementById("login-user").value = cred.id;
+      document.getElementById("login-pass").value = cred.password || "";
+    }
+  } catch (e) { /* no saved login - user types it once */ }
+}
+
+function clearSavedAuth() {
+  try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch (e) { /* ignore */ }
+}
+
+function enterApp(token, user) {
+  authToken = token;
+  document.getElementById("user-status").textContent = "Signed in as " + user.username;
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app-screen").style.display = "block";
+  initFilteredTab();
+  initDataTab();
+}
+
+// ---------------------------------------------------------- helpers
+
+function apiFetch(path, options = {}) {
+  const headers = options.headers || {};
+  if (authToken) headers["Authorization"] = "Bearer " + authToken;
+  if (options.body) headers["Content-Type"] = "application/json";
+  return fetch(API_BASE + path, { ...options, headers }).then(async (res) => {
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* no body */ }
+    if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
+    return data;
+  });
+}
+
+function bucketBadge(bucketName) {
+  const safe = bucketName || "Unknown";
+  return `<span class="badge" data-b="${safe}">${safe}</span>`;
+}
+
+// Makes text safe to place inside HTML (remarks are typed by people).
+function esc(text) {
+  return String(text ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+// Short Indian format for tables: 7440000 -> "Rs.74.4 L", 12000000 -> "Rs.1.2 Cr"
+function fmtShort(n) {
+  if (n === null || n === undefined || n === "") return "—";
+  n = Number(n);
+  if (Number.isNaN(n)) return "—";
+  if (n >= 1e7) return "Rs." + (n / 1e7).toFixed(2).replace(/\.?0+$/, "") + " Cr";
+  if (n >= 1e5) return "Rs." + (n / 1e5).toFixed(1).replace(/\.0$/, "") + " L";
+  return "Rs." + n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+}
+
+function fmtMoney(n) {
+  if (n === null || n === undefined) return "—";
+  return "Rs." + Number(n).toLocaleString("en-IN");
+}
+
+// ---------------------------------------------------------- login
+
+document.getElementById("login-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const username = document.getElementById("login-user").value.trim();
+  const password = document.getElementById("login-pass").value;
+  const errEl = document.getElementById("login-error");
+  errEl.textContent = "";
+  if (!username || !password) {
+    errEl.textContent = "Enter both a username/email and password.";
+    return;
+  }
+  try {
+    const data = await apiFetch("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    if (document.getElementById("remember-me").checked) {
+      saveAuth(data.token, data.user);
+      saveUsername(username);
+      offerToSavePassword(username, password);
+    } else {
+      clearSavedAuth();
+    }
+    enterApp(data.token, data.user);
+  } catch (e) {
+    errEl.textContent = e.message.includes("Failed to fetch")
+      ? "Can't reach the server at " + API_BASE + " — is 'python server.py' running?"
+      : e.message;
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  authToken = null;
+  clearSavedAuth();
+  document.getElementById("app-screen").style.display = "none";
+  document.getElementById("login-screen").style.display = "block";
+  document.getElementById("login-pass").value = "";
+  fillSavedLogin();
+});
+
+
+
+// ---------------------------------------------------------- new user (admin approves)
+
+async function openNewUserBox() {
+  ["nu-admin-user", "nu-admin-pass", "nu-user", "nu-email", "nu-pass"].forEach((id) => { document.getElementById(id).value = ""; });
+  document.getElementById("nu-error").textContent = "";
+  document.getElementById("nu-ok").textContent = "";
+  // If nobody exists yet, the first user needs no admin.
+  let hasUsers = true;
+  try { hasUsers = (await apiFetch("/api/users/status")).has_users; } catch (e) { /* keep admin fields visible */ }
+  document.getElementById("nu-admin-block").style.display = hasUsers ? "" : "none";
+  document.getElementById("newuser-modal").style.display = "block";
+  document.getElementById(hasUsers ? "nu-admin-user" : "nu-user").focus();
+}
+
+function closeNewUserBox() {
+  document.getElementById("newuser-modal").style.display = "none";
+  ["nu-admin-pass", "nu-pass"].forEach((id) => { document.getElementById(id).value = ""; });
+}
+
+document.getElementById("newuser-link").addEventListener("click", openNewUserBox);
+document.getElementById("newuser-open-btn").addEventListener("click", openNewUserBox);
+document.getElementById("nu-cancel").addEventListener("click", closeNewUserBox);
+
+document.getElementById("newuser-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const errEl = document.getElementById("nu-error");
+  const okEl = document.getElementById("nu-ok");
+  const btn = document.getElementById("nu-submit");
+  errEl.textContent = ""; okEl.textContent = "";
+  btn.disabled = true;
+  try {
+    const body = {
+      admin_username: document.getElementById("nu-admin-user").value.trim(),
+      admin_password: document.getElementById("nu-admin-pass").value,
+      new_username: document.getElementById("nu-user").value.trim(),
+      new_email: document.getElementById("nu-email").value.trim(),
+      new_password: document.getElementById("nu-pass").value,
+    };
+    const res = await apiFetch("/api/users/create", { method: "POST", body: JSON.stringify(body) });
+    okEl.textContent = "User '" + res.username + "' created. They can sign in now.";
+    ["nu-user", "nu-email", "nu-pass"].forEach((id) => { document.getElementById(id).value = ""; });
+  } catch (e) {
+    errEl.textContent = e.message.includes("Failed to fetch")
+      ? "Can't reach the server - is 'python server.py' running?"
+      : e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+
+// ---------------------------------------------------------- tabs
+
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+// ---------------------------------------------------------- Filter tabs
+
+document.querySelectorAll(".ftab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".ftab").forEach((b) => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".ftab-panel").forEach((p) => p.classList.toggle("active", p.dataset.ftab === btn.dataset.ftab));
+  });
+});
+
+// How many filters are switched on inside one tab (a min/max pair counts once).
+function countActiveIn(panel) {
+  let n = 0;
+  panel.querySelectorAll("details.dd, .pills[id]").forEach((g) => { if (g.querySelector("input:checked")) n++; });
+  panel.querySelectorAll(".range").forEach((r) => {
+    if ([...r.querySelectorAll("input")].some((i) => i.value.trim())) n++;
+  });
+  panel.querySelectorAll("#f-month, #f-year").forEach((i) => { if (i.value.trim()) n++; });
+  if (panel.querySelector("#f-many-small:checked")) n++;
+  panel.querySelectorAll(".lm-row").forEach((row) => {
+    const any = [...row.querySelectorAll("input:not([type=checkbox])")].some((i) => i.value.trim())
+      || row.querySelector("input[type=checkbox]:checked");
+    if (any) n++;
+  });
+  return n;
+}
+
+function updateFilterTabCounts() {
+  document.querySelectorAll(".ftab-panel").forEach((panel) => {
+    const badge = document.querySelector(`.ftab[data-ftab="${panel.dataset.ftab}"] .ftab-count`);
+    if (badge) { const n = countActiveIn(panel); badge.textContent = n ? String(n) : ""; }
+  });
+}
+
+["input", "change"].forEach((evt) =>
+  document.getElementById("f-rail").addEventListener(evt, updateFilterTabCounts));
+
+// ---------------------------------------------------------- Data & Ingest tab
+
+let runPollTimer = null;
+let runWasRunning = false;
+
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(String(iso).length <= 10 ? iso + "T00:00:00" : String(iso).replace(" ", "T"));
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function statusClass(status) {
+  const k = String(status || "").trim().toLowerCase();
+  for (const name of ["disbursed", "rejected", "approved", "login", "hold", "drop"]) {
+    if (k.startsWith(name) || k.includes(name)) return "st-" + name;
+  }
+  return "st-other";
+}
+function statusBadge(status) {
+  return status ? `<span class="st ${statusClass(status)}">${esc(status)}</span>` : "—";
+}
+function remarkBox(label, text, status) {
+  const t = text && String(text).trim();
+  return `<div class="remark-box ${t ? statusClass(status) : ""}"><b>${esc(label)}</b>${t ? esc(t) : '<span style="color:var(--slate)">Not available in the MIS sheet for this lead</span>'}</div>`;
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(String(iso).replace(" ", "T"));
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtMonth(ym) {
+  const d = new Date(ym + "-01T00:00:00");
+  return Number.isNaN(d.getTime()) ? ym : d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+}
+
+async function loadCoverage() {
+  const chip = document.getElementById("data-chip");
+  try {
+    const c = await apiFetch("/api/data-coverage");
+    const till = c.last_application_date;
+    chip.textContent = till ? "Data till " + fmtDate(till) : "No data stored";
+    document.getElementById("cov-main").textContent = till ? fmtDate(till) : "No data yet";
+    document.getElementById("cov-sub").textContent = c.total_leads
+      ? `From ${fmtDate(c.first_application_date)} · ${c.total_leads.toLocaleString("en-IN")} leads stored, `
+        + `${c.leads_with_cam.toLocaleString("en-IN")} with a readable CAM · last updated ${fmtDateTime(c.last_updated)}`
+      : "Run a fetch below to store the first leads.";
+    renderCoverageTable(c.months || []);
+    renderFetched(c.fetched_ranges || [], (c.recent_runs || [])[0]);
+  } catch (e) {
+    chip.textContent = "Data till —";
+    document.getElementById("cov-main").textContent = "—";
+    document.getElementById("cov-sub").textContent = "Could not read the data range: " + e.message;
+  }
+}
+
+const MIS_WORDS = {
+  ok: "attached",
+  saved_copy: "Google could not be read, the last saved copy was used",
+  failed: "could not be attached this time (the leads are safe)",
+  nothing: "nothing to attach yet",
+};
+
+function renderFetched(ranges, lastRun) {
+  const el = document.getElementById("cov-fetched");
+  if (!ranges.length) { el.innerHTML = ""; return; }
+  let html = '<div class="data-card-title" style="margin-top:18px;">Already fetched (application dates)</div>'
+    + ranges.map((r) => `<div class="fetched-row"><b>${esc(fmtDate(r.from))}</b> to <b>${esc(fmtDate(r.to))}</b></div>`).join("");
+  if (lastRun && lastRun.finished_at) {
+    const bad = lastRun.mis_status === "failed" || lastRun.mis_status === "saved_copy";
+    html += `<div class="fetched-note${bad ? " warn" : ""}">Last run finished ${esc(fmtDateTime(lastRun.finished_at))}`
+      + (lastRun.mis_status ? ` · MIS remarks: ${esc(MIS_WORDS[lastRun.mis_status] || lastRun.mis_status)}` : "") + `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderCoverageTable(months) {
+  const table = document.getElementById("cov-table");
+  if (!months.length) {
+    table.innerHTML = '<tbody><tr><td class="loading">Nothing stored yet.</td></tr></tbody>';
+    return;
+  }
+  const rows = [...months].reverse().map((m) => {
+    const bad = m.leads - m.with_cam;
+    return `<tr>
+      <td><b>${esc(fmtMonth(m.month))}</b></td>
+      <td>${m.leads.toLocaleString("en-IN")}</td>
+      <td>${m.with_cam.toLocaleString("en-IN")}</td>
+      <td>${bad ? `<span style="color:var(--danger); font-weight:700;">${bad.toLocaleString("en-IN")}</span>` : "0"}</td>
+      <td>${esc(fmtDate(m.last_application_date))}</td>
+      <td><button class="small-btn" type="button" data-fill-month="${esc(m.month)}">Fetch again</button></td>
+    </tr>`;
+  }).join("");
+  table.innerHTML = `<thead><tr><th>Month</th><th>Leads stored</th><th>CAM read</th><th>CAM not read</th><th>Latest application</th><th></th></tr></thead><tbody>${rows}</tbody>`;
+  table.querySelectorAll("[data-fill-month]").forEach((b) => b.addEventListener("click", () => {
+    fillMonthDates(b.dataset.fillMonth);
+    document.getElementById("run-from").scrollIntoView({ behavior: "smooth", block: "center" });
+  }));
+}
+
+function isoLocal(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function setRunDates(from, to) {
+  document.getElementById("run-from").value = from;
+  document.getElementById("run-to").value = to;
+}
+
+function fillMonthDates(ym) {        // "2026-09" -> first day .. last day (never after today)
+  const [y, m] = ym.split("-").map(Number);
+  const last = new Date(y, m, 0);
+  const today = new Date();
+  setRunDates(ym + "-01", isoLocal(last > today ? today : last));
+}
+
+document.querySelectorAll("#run-quick [data-quick]").forEach((b) => b.addEventListener("click", () => {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const q = b.dataset.quick;
+  if (q === "this-month") setRunDates(isoLocal(new Date(y, m, 1)), isoLocal(now));
+  else if (q === "last-month") setRunDates(isoLocal(new Date(y, m - 1, 1)), isoLocal(new Date(y, m, 0)));
+  else setRunDates(`${y}-01-01`, isoLocal(now));
+}));
+document.getElementById("run-btn").addEventListener("click", startRun);
+document.getElementById("data-chip").addEventListener("click", () => {
+  document.querySelector('.tab-btn[data-tab="data"]').click();
+});
+document.querySelector('.tab-btn[data-tab="data"]').addEventListener("click", () => {
+  loadCoverage();
+  refreshRunStatus();
+});
+
+async function startRun() {
+  const msg = document.getElementById("run-msg");
+  const from = document.getElementById("run-from").value;
+  const to = document.getElementById("run-to").value;
+  if (!from || !to) { msg.className = "run-msg err"; msg.textContent = "Pick both a From date and a To date."; return; }
+  if (from > to) { msg.className = "run-msg err"; msg.textContent = "The From date must not be after the To date."; return; }
+  const body = { from_date: from, to_date: to };
+  if (document.getElementById("run-force").checked) body.force = true;
+
+  const btn = document.getElementById("run-btn");
+  btn.disabled = true;
+  msg.className = "run-msg";
+  msg.textContent = "Starting…";
+  document.getElementById("run-result").innerHTML = "";
+  try {
+    await apiFetch("/api/ingest", { method: "POST", body: JSON.stringify(body) });
+    runWasRunning = true;
+  } catch (e) {
+    msg.className = "run-msg err";
+    msg.textContent = e.message;       // e.g. "An ingest for 2026-09-01 to 2026-09-30 is already running."
+    btn.disabled = false;
+    refreshRunStatus();
+    return;
+  }
+  refreshRunStatus();
+}
+
+const RUN_COUNT_LABELS = [
+  ["total", "Leads found in OMS", false],
+  ["cam_read", "CAMs read and stored", false],
+  ["refreshed", "Already stored, updated", false],
+  ["no_cam", "No CAM yet (not stored)", false],
+  ["cam_error", "CAM could not be read", true],
+  ["error", "Errors", true],
+];
+
+let runTick = null;      // { startedMs, percent, ... } used by the 1-second clock
+
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), r = sec % 60;
+  return h ? `${h}h ${m}m` : m ? `${m}m ${String(r).padStart(2, "0")}s` : `${r}s`;
+}
+
+function runTimes() {
+  if (!runTick) return "";
+  const elapsed = (Date.now() - runTick.startedMs) / 1000;
+  const p = runTick.percent;
+  const eta = p >= 3 && p < 100 ? elapsed * (100 - p) / p : null;
+  return `Elapsed <b>${fmtDuration(elapsed)}</b> · Time left <b>${eta == null ? "estimating…" : "about " + fmtDuration(eta)}</b>`;
+}
+
+function renderRunProgress(s) {
+  const p = s.progress || {};
+  const pct = Math.min(100, Number(p.percent || 0));
+  const started = s.started_at ? new Date(s.started_at).getTime() : Date.now();
+  runTick = { startedMs: started, percent: pct };
+  const live = p.live || {};
+  const bits = [];
+  if (p.chunk_total) bits.push(`Month piece <b>${p.chunk_index || 0} of ${p.chunk_total}</b>${p.chunk_label ? " (" + esc(p.chunk_label) + ")" : ""}`);
+  if (p.cams_total) bits.push(`CAMs read <b>${Number(p.cams_done || 0).toLocaleString("en-IN")} of ${Number(p.cams_total).toLocaleString("en-IN")}</b>`);
+  if (p.leads_total) bits.push(`Leads in OMS <b>${Number(p.leads_total).toLocaleString("en-IN")}</b>`);
+  if (live.cam_read) bits.push(`Stored <b>${Number(live.cam_read).toLocaleString("en-IN")}</b>`);
+  document.getElementById("run-progress").innerHTML = `
+    <div class="prog live" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+      <div class="prog-top"><span>${esc(p.phase || "starting")}</span><span class="prog-pct">${pct.toFixed(1)}%</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <div class="prog-meta"><span id="prog-times">${runTimes()}</span>${bits.map((b) => `<span>${b}</span>`).join("")}</div>
+    </div>`;
+}
+
+setInterval(() => {                       // keep the elapsed clock moving between 3-second polls
+  const el = document.getElementById("prog-times");
+  if (el && runTick) el.innerHTML = runTimes();
+}, 1000);
+
+document.getElementById("stop-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("stop-btn");
+  btn.disabled = true;
+  try { await apiFetch("/api/ingest/stop", { method: "POST" }); }
+  catch (e) { document.getElementById("run-msg").className = "run-msg err"; document.getElementById("run-msg").textContent = e.message; }
+  refreshRunStatus();
+});
+
+function renderRunStatus(s) {
+  const msg = document.getElementById("run-msg");
+  const result = document.getElementById("run-result");
+  const btn = document.getElementById("run-btn");
+  btn.disabled = !!s.running;
+
+  const stopBtn = document.getElementById("stop-btn");
+  stopBtn.hidden = !s.running;
+  stopBtn.disabled = !!s.stopping;
+  stopBtn.textContent = s.stopping ? "Stopping…" : "Stop";
+  const progEl = document.getElementById("run-progress");
+
+  if (s.running) {
+    msg.className = "run-msg";
+    msg.innerHTML = `<span class="spin"></span>${s.stopping ? "Stopping" : "Fetching"} <b>${esc(s.period)}</b> — started ${esc(fmtDateTime(s.started_at))}. `
+      + (s.stopping ? "It stops after the CAM files being read right now." : "You can use other tabs meanwhile.");
+    renderRunProgress(s);
+    result.innerHTML = "";
+    return;
+  }
+  progEl.innerHTML = "";
+  runTick = null;
+  if (!s.finished_at) { msg.textContent = ""; result.innerHTML = ""; return; }   // nothing run since the server started
+
+  if (s.stopped) {
+    msg.className = "run-msg";
+    msg.textContent = `Stopped: the fetch for ${s.period} was stopped ${fmtDateTime(s.finished_at)}. Leads stored so far are kept; run it again to fetch the rest.`;
+  } else if (s.error) {
+    msg.className = "run-msg err";
+    msg.textContent = `The fetch for ${s.period} failed: ${s.error}`;
+  } else {
+    msg.className = "run-msg";
+    msg.textContent = `Last fetch: ${s.period}, finished ${fmtDateTime(s.finished_at)}.`
+      + (s.log_file ? ` Full log on the server: ${s.log_file}` : "");
+  }
+  const counts = s.counts || {};
+  result.innerHTML = Object.keys(counts).length
+    ? `<div class="run-counts">${RUN_COUNT_LABELS.map(([k, label, bad]) =>
+        `<div class="run-count${bad && counts[k] ? " bad" : ""}"><b>${Number(counts[k] || 0).toLocaleString("en-IN")}</b><span>${label}</span></div>`).join("")}</div>`
+    : "";
+  if (counts.mis_status) {
+    const bad = counts.mis_status === "failed" || counts.mis_status === "saved_copy";
+    result.innerHTML += `<div class="run-msg${bad ? " err" : ""}">MIS remarks: ${esc(MIS_WORDS[counts.mis_status] || counts.mis_status)}.</div>`;
+  }
+}
+
+async function refreshRunStatus() {
+  let s;
+  try { s = await apiFetch("/api/ingest/status"); } catch (e) { return; }
+  renderRunStatus(s);
+  clearTimeout(runPollTimer);
+  if (s.running) {
+    runWasRunning = true;
+    runPollTimer = setTimeout(refreshRunStatus, 2000);
+  } else if (runWasRunning) {
+    runWasRunning = false;
+    loadCoverage();                          // new "data till" date
+    if (!s.error) initFilteredTab();         // new states / loan types etc. in the filters
+  }
+}
+
+function initDataTab() {
+  const now = new Date();
+  setRunDates(isoLocal(new Date(now.getFullYear(), now.getMonth(), 1)), isoLocal(now));
+  document.getElementById("run-from").max = document.getElementById("run-to").max = isoLocal(now);
+  loadCoverage();
+  refreshRunStatus();
+}
+
+// ---------------------------------------------------------- Bucket names
+
+const BUCKET_ORDER = ["Excellent", "Good", "Medium", "Low", "Very Low"];   // best first
+const LADDER = BUCKET_ORDER;
+
+// ---------------------------------------------------------- Tab 3: Lead Detail
+
+document.getElementById("phone-search-btn").addEventListener("click", searchByPhone);
+document.getElementById("phone-search-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") searchByPhone();
+});
+
+async function searchByPhone() {
+  const phone = document.getElementById("phone-search-input").value.trim();
+  const resultsEl = document.getElementById("phone-search-results");
+  document.getElementById("detail-result").innerHTML = "";
+  if (!phone) {
+    resultsEl.innerHTML = "";
+    return;
+  }
+  resultsEl.innerHTML = '<div class="loading">Searching…</div>';
+  try {
+    const leads = await apiFetch(`/api/stored-leads/search?phone=${encodeURIComponent(phone)}`);
+    if (!leads.length) {
+      resultsEl.innerHTML = '<div class="empty-state">No leads found for that phone number.</div>';
+      return;
+    }
+    resultsEl.innerHTML = `<div class="card">` + leads.map((lead) => `
+      <div class="lead-row">
+        <div>
+          <div class="lead-name">${esc(lead.customer_name || "Unnamed")}</div>
+          <div class="lead-sub">${esc(lead.customer_phone || "—")} · Ticket ${lead.ticket_id ?? "—"} · ${esc(lead.provider_name || "")}${lead.application_date ? " · applied " + esc(fmtDate(lead.application_date)) : ""}</div>
+        </div>
+        <div class="badges">
+          ${lead.ticket_status ? statusBadge(lead.ticket_status) : ""}
+          ${bucketBadge(lead.secured_bucket)}
+          ${bucketBadge(lead.unsecured_bucket)}
+          <button class="view-btn" onclick="viewLeadDetail(${lead.id})">View</button>
+        </div>
+      </div>
+    `).join("") + `</div>`;
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="empty-state">${e.message}</div>`;
+  }
+}
+
+function viewLeadDetail(id) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+  document.querySelector('[data-tab="detail"]').classList.add("active");
+  document.getElementById("tab-detail").classList.add("active");
+  document.getElementById("phone-search-results").innerHTML = "";
+  loadStoredLeadDetail(id);
+}
+
+async function loadLeadDetail(id) {
+  const el = document.getElementById("detail-result");
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const lead = await apiFetch(`/api/leads/${id}`);
+    const cap = (lead.financial_profile && lead.financial_profile.financial_capacity) || {};
+    
+    // Fetch remarks
+    let remarksHtml = '';
+    try {
+      const remarks = await apiFetch(`/api/leads/${id}/remarks`);
+      if (remarks && remarks.length) {
+        remarksHtml = remarks.map(r => `
+          <div style="margin-bottom: 8px; padding: 10px; border-left: 3px solid var(--accent); background: var(--bg);">
+            <div style="font-size: 11px; color: var(--slate); margin-bottom: 4px;">
+              <strong>${esc(r.username)}</strong> at ${new Date(r.created_at).toLocaleString()}
+            </div>
+            <div style="font-size: 13px;">${esc(r.remark)}</div>
+          </div>
+        `).join("");
+      } else {
+        remarksHtml = '<div style="font-size:13px; color:var(--slate);">No remarks yet.</div>';
+      }
+    } catch (e) {
+      remarksHtml = `<div class="error-msg">Could not load remarks.</div>`;
+    }
+
+    el.innerHTML = `
+      <div class="card">
+        <div class="detail-section">
+          <h4>Applicant</h4>
+          <div class="kv-grid">
+            <div class="kv"><div class="k">Name</div><div class="v">${lead.customer_name || "—"}</div></div>
+            <div class="kv"><div class="k">Phone</div><div class="v">${lead.customer_phone || "—"}</div></div>
+            <div class="kv"><div class="k">Ticket</div><div class="v">${lead.ticket_id ?? "—"}</div></div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Bucket decision</h4>
+          <div class="badges" style="margin-bottom:10px;">
+            Secured: ${bucketBadge(lead.secured_bucket)} &nbsp; Unsecured: ${bucketBadge(lead.unsecured_bucket)}
+          </div>
+          <div class="kv-grid">
+            <div class="kv"><div class="k">Monthly income</div><div class="v">${fmtMoney(cap.monthly_income)}</div></div>
+            <div class="kv"><div class="k">FOIR</div><div class="v">${cap.foir_percent ?? "—"}%</div></div>
+            <div class="kv"><div class="k">Monthly surplus</div><div class="v">${fmtMoney(cap.monthly_surplus)}</div></div>
+            <div class="kv"><div class="k">Secured eligibility</div><div class="v">${fmtMoney(cap.secured_cap_eligibility)}</div></div>
+            <div class="kv"><div class="k">Unsecured eligibility</div><div class="v">${fmtMoney(cap.unsecured_cap_eligibility)}</div></div>
+            <div class="kv"><div class="k">Existing EMI</div><div class="v">${fmtMoney(cap.existing_emi)}</div></div>
+          </div>
+          ${(cap.running_loans && cap.running_loans.emi_check && cap.running_loans.emi_check.note && cap.running_loans.emi_check.status !== "typed_excludes_finished") ? `
+          <div class="lead-sub" style="margin-top:8px;">EMI note: ${esc(cap.running_loans.emi_check.note)}</div>
+          ` : ""}
+          ${cap.prior_disbursed_amount ? `
+          <div class="kv-grid" style="margin-top:10px;">
+            <div class="kv"><div class="k">Prior disbursed by F2 Fintech</div><div class="v">${fmtMoney(cap.prior_disbursed_amount)}</div></div>
+            <div class="kv"><div class="k">Secured eligibility after disbursal from F2 Fintech</div><div class="v">${fmtMoney(cap.secured_cap_eligibility)}</div></div>
+            <div class="kv"><div class="k">Unsecured eligibility after disbursal from F2 Fintech</div><div class="v">${fmtMoney(cap.unsecured_cap_eligibility)}</div></div>
+          </div>
+          <div class="lead-sub" style="margin-top:6px;">
+            Before disbursal: Secured ${fmtMoney(cap.secured_cap_eligibility_before_prior_loans)} · Unsecured ${fmtMoney(cap.unsecured_cap_eligibility_before_prior_loans)}
+          </div>
+          ` : ""}
+        </div>
+
+        <div class="detail-section" id="ai-explanation-section">
+          <h4>AI explanation</h4>
+          <button class="primary" style="padding: 6px 12px; margin-bottom: 12px; font-size: 12px; width: auto;" onclick="generateExplanation(${id})">Generate AI Explanation</button>
+          <div id="ai-explanation-content"></div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Remarks</h4>
+          <div id="remarks-list" style="margin-bottom: 12px;">${remarksHtml}</div>
+          <textarea id="new-remark-text" style="width: 100%; min-height: 60px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; font-family: inherit; font-size: 13px;" placeholder="Add a new remark..."></textarea>
+          <button class="view-btn" onclick="addRemark(${id})">Add Remark</button>
+        </div>
+
+        ${lead.cam_url ? `<div class="detail-section"><h4>Source document</h4><a href="${lead.cam_url}" target="_blank" rel="noopener">Open CAM file</a></div>` : ""}
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state">${e.message}</div>`;
+  }
+}
+
+async function generateExplanation(id, base = "/api/leads") {
+  const contentDiv = document.getElementById("ai-explanation-content");
+  contentDiv.innerHTML = '<div class="loading">Generating explanation with Gemini...</div>';
+  try {
+    const explanation = await apiFetch(`${base}/${id}/explanation`);
+    
+    let html = "";
+    if (explanation.overall_summary) {
+      html += `<p class="explanation-block">${explanation.overall_summary}</p>`;
+    }
+    if (explanation.key_positive_factors && explanation.key_positive_factors.length) {
+      html += `<div style="margin-top:10px;"><strong style="font-size:13px;">Strengths</strong>
+               <ul class="factor-list">${explanation.key_positive_factors.map(f => `<li>${f}</li>`).join("")}</ul></div>`;
+    }
+    if (explanation.key_risk_factors && explanation.key_risk_factors.length) {
+      html += `<div style="margin-top:10px;"><strong style="font-size:13px;">Risk factors</strong>
+               <ul class="factor-list">${explanation.key_risk_factors.map(f => `<li>${f}</li>`).join("")}</ul></div>`;
+    }
+    contentDiv.innerHTML = html;
+  } catch (e) {
+    contentDiv.innerHTML = `<div class="error-msg">Failed to generate explanation: ${e.message}</div>`;
+  }
+}
+
+function lakhToRupees(v) { return v === "" || v == null ? null : Math.round(Number(v) * 100000); }
+function fmtLakh(rupees) {
+  if (rupees == null) return "—";
+  const l = rupees / 100000;
+  return l >= 100 ? (l / 100).toFixed(2).replace(/\.?0+$/, "") + " Cr" : l.toFixed(2).replace(/\.?0+$/, "") + " L";
+}
+function asmtDiffHtml(analyst, banker) {
+  if (analyst == null || banker == null) return "";
+  const d = banker - analyst;
+  if (d === 0) return "Both are the same.";
+  const pct = analyst ? ` (${d > 0 ? "+" : ""}${(d / analyst * 100).toFixed(0)}%)` : "";
+  return `Banker gave ${fmtLakh(Math.abs(d))} ${d > 0 ? "MORE" : "LESS"} than the analyst${pct}`;
+}
+function asmtPreview() {
+  const a = lakhToRupees(document.getElementById("asmt-analyst").value);
+  const b = lakhToRupees(document.getElementById("asmt-banker").value);
+  const el = document.getElementById("asmt-diff");
+  el.textContent = asmtDiffHtml(a, b);
+  el.className = "asmt-diff" + (a != null && b != null && a !== b ? (b > a ? " up" : " down") : "");
+}
+function asmtItemHtml(r) {
+  return `<div class="asmt-item">
+    <div class="lead-sub" style="margin:0 0 4px;"><strong>${esc(r.username || "")}</strong> · ${esc(fmtDateTime(r.created_at))}</div>
+    <div>Analyst: <b>${fmtLakh(r.analyst_eligibility)}</b> · Banker: <b>${fmtLakh(r.banker_eligibility)}</b>${r.analyst_eligibility != null && r.banker_eligibility != null ? " · " + esc(asmtDiffHtml(r.analyst_eligibility, r.banker_eligibility)) : ""}</div>
+    ${r.variation_reason ? `<div style="margin-top:4px;">Reason: ${esc(r.variation_reason)}</div>` : ""}
+  </div>`;
+}
+async function saveAssessment(id) {
+  const msg = document.getElementById("asmt-msg");
+  msg.textContent = "";
+  const body = {
+    analyst_eligibility: lakhToRupees(document.getElementById("asmt-analyst").value),
+    banker_eligibility: lakhToRupees(document.getElementById("asmt-banker").value),
+    variation_reason: document.getElementById("asmt-reason").value,
+  };
+  try {
+    await apiFetch(`/api/allocated-leads/${id}/assessments`, { method: "POST", body: JSON.stringify(body) });
+    loadStoredLeadDetail(id);
+  } catch (e) { msg.textContent = e.message; }
+}
+
+async function addRemark(id, base = "/api/leads") {
+  const input = document.getElementById("new-remark-text");
+  const remark = input.value.trim();
+  if (!remark) return;
+  
+  try {
+    await apiFetch(`${base}/${id}/remarks`, {
+      method: "POST",
+      body: JSON.stringify({ remark })
+    });
+    input.value = "";
+    // Refresh just the lead detail to show the new remark
+    if (base === "/api/leads") loadLeadDetail(id); else loadStoredLeadDetail(id);
+  } catch (e) {
+    alert("Failed to add remark: " + e.message);
+  }
+}
+
+// ---------------------------------------------------------- Tab: Buckets & Filters
+// Reads the stored lead data (POST /api/allocate). The buckets are worked out
+// live every time, using today's date, so they never go stale.
+
+let filterOptions = null;
+let lastAllocation = null;
+let fBucketType = "secured";
+let fBucket = null;          // null = every bucket
+let fPage = 0;
+let fSlot = null;            // null = every slot (unsecured view only)
+const SLOTS = [
+  { id: "P1", title: "Act now", help: "Eligibility, more than 3 enquiries, OGL, RCU, PD call, good CIBIL, documents, or customer not picking up" },
+  { id: "P2", title: "Fix in 3 months", help: "Bounces in the last 3 months, eligibility short, or another reason that can be sorted out" },
+  { id: "P3", title: "Hard to fix", help: "Low CIBIL, 3+ unsecured loans, or a very negative reason that will not clear in 3 months" },
+  { id: "P4", title: "No remark", help: "Neither a credit nor an ops remark was given" },
+];
+const F_PAGE_SIZE = 50;
+
+// "50000", "2L", "1.5 lakh", "1cr" -> rupees. null = empty, NaN = not understood.
+function parseAmount(text) {
+  const t = String(text ?? "").trim().toLowerCase().replace(/,/g, "").replace(/₹|rs\.?/g, "").trim();
+  if (!t) return null;
+  const m = t.match(/^(\d+(?:\.\d+)?)\s*(k|l|lac|lacs|lakh|lakhs|cr|crore|crores)?$/);
+  if (!m) return NaN;
+  const mult = { k: 1e3, l: 1e5, lac: 1e5, lacs: 1e5, lakh: 1e5, lakhs: 1e5, cr: 1e7, crore: 1e7, crores: 1e7 }[m[2]] || 1;
+  return Number(m[1]) * mult;
+}
+
+function readNum(id, isAmount) {
+  const raw = document.getElementById(id).value;
+  if (!String(raw).trim()) return null;
+  const v = isAmount ? parseAmount(raw) : Number(String(raw).replace(/,/g, "").trim());
+  if (Number.isNaN(v)) throw new Error(`"${raw}" is not a valid number`);
+  return v;
+}
+
+function checkedValues(id) {
+  return [...document.querySelectorAll(`#${id} input:checked`)].map((i) => i.value);
+}
+
+function updateDdCount(id) {
+  const n = checkedValues(id).length;
+  const el = document.getElementById(id + "-count");
+  if (el) el.textContent = n ? String(n) : "";
+}
+
+function renderCheckList(id, title, values) {
+  const el = document.getElementById(id);
+  const open = el.open;
+  const items = values || [];
+  el.innerHTML = `<summary><span>${esc(title)}</span><span class="dd-count" id="${id}-count"></span></summary>
+    <div class="dd-body">
+      ${items.length > 8 ? `<input type="text" class="dd-search" placeholder="Search ${esc(title.toLowerCase())}" aria-label="Search ${esc(title)}">` : ""}
+      <div class="pills">${items.map((v) =>
+        `<label class="chk"><input type="checkbox" value="${esc(v)}"> ${esc(v)}</label>`).join("")
+        || '<div class="lead-sub">Nothing stored yet</div>'}</div>
+    </div>`;
+  el.open = open;
+  el.querySelectorAll("input[type=checkbox]").forEach((i) => i.addEventListener("change", () => updateDdCount(id)));
+  const search = el.querySelector(".dd-search");
+  if (search) {
+    search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      el.querySelectorAll("label.chk").forEach((l) => { l.hidden = !!q && !l.textContent.toLowerCase().includes(q); });
+    });
+  }
+}
+
+function renderChips(id, values, labels) {
+  // labels (optional) changes only the TEXT shown; the saved value stays the same
+  document.getElementById(id).innerHTML = (values || []).map((v) =>
+    `<label class="chk"><input type="checkbox" value="${esc(v)}"> ${esc((labels && labels[v]) || v)}</label>`).join("");
+}
+
+function renderSlabRows(slabs) {
+  document.getElementById("slab-rows").innerHTML = (slabs || []).map((s) => `
+    <div class="slab">
+      <span class="slab-name">${esc(s.slab)}<small>${esc(s.meaning)}</small></span>
+      <div class="range">
+        <input type="text" data-slab="${esc(s.slab)}" data-end="min" placeholder="Min" aria-label="${esc(s.slab)} loans minimum">
+        <span class="dash">to</span>
+        <input type="text" data-slab="${esc(s.slab)}" data-end="max" placeholder="Max" aria-label="${esc(s.slab)} loans maximum">
+      </div>
+    </div>`).join("");
+}
+
+let loanRowSeq = 0;
+function addLoanRow() {
+  const n = ++loanRowSeq;
+  const row = document.createElement("div");
+  row.className = "lm-row";
+  row.innerHTML = `
+    <details class="dd" id="lm-bank-${n}"></details>
+    <details class="dd" id="lm-type-${n}"></details>
+    <span class="lm-lab">Loan amount (sanctioned)</span>
+    <input type="text" class="lm-min" placeholder="Amount min" aria-label="Loan amount minimum">
+    <input type="text" class="lm-max" placeholder="Amount max" aria-label="Loan amount maximum">
+    <span class="lm-lab">How many such loans? (blank = at least 1; 0 as max = none)</span>
+    <input type="text" class="lm-cmin" placeholder="At least" aria-label="Minimum number of such loans" inputmode="numeric">
+    <input type="text" class="lm-cmax" placeholder="At most" aria-label="Maximum number of such loans" inputmode="numeric">
+    <button class="small-btn lm-remove" type="button">Remove</button>`;
+  row.querySelector(".lm-remove").addEventListener("click", () => row.remove());
+  document.getElementById("loan-match-rows").appendChild(row);
+  renderCheckList(`lm-bank-${n}`, "Bank (any of)", (filterOptions && filterOptions.banks) || []);
+  renderCheckList(`lm-type-${n}`, "Loan type (any of)", (filterOptions && filterOptions.existing_loan_types) || []);
+}
+
+async function initFilteredTab() {
+  const msg = document.getElementById("f-message");
+  try {
+    filterOptions = await apiFetch("/api/filters/options");
+    renderCheckList("dd-statuses", "Ticket status", filterOptions.statuses);
+    renderCheckList("dd-states", "State", filterOptions.states);
+    renderCheckList("dd-loantypes", "Loan type applied for", filterOptions.loan_types);
+    renderChips("chips-employment", filterOptions.employment_types);
+    renderChips("chips-marital", filterOptions.marital_statuses, { Unmarried: "Single / Unmarried" });
+    renderChips("chips-house", filterOptions.house_types);
+    renderSlabRows(filterOptions.loan_slabs);
+    document.getElementById("many-small-rule").textContent = filterOptions.many_small_loans_rule || "";
+    document.getElementById("loan-match-rows").innerHTML = "";
+    addLoanRow();
+  } catch (e) {
+    msg.textContent = "Could not load the filter lists: " + e.message;
+  }
+  await applyFilters();
+}
+
+function collectFilters() {
+  const f = {};
+  const month = document.getElementById("f-month").value;
+  const year = document.getElementById("f-year").value.trim();
+  if (month) f.month = month; else if (year) f.year = year;
+
+  const lists = {
+    statuses: "dd-statuses", states: "dd-states", loan_types: "dd-loantypes",
+    employment_types: "chips-employment", marital_statuses: "chips-marital", house_types: "chips-house",
+  };
+  for (const [key, id] of Object.entries(lists)) {
+    const v = checkedValues(id);
+    if (v.length) f[key] = v;
+  }
+
+  const numbers = [
+    ["min_income", "f-min-income", true], ["max_income", "f-max-income", true],
+    ["min_cibil", "f-min-cibil"], ["max_cibil", "f-max-cibil"],
+    ["min_experience", "f-min-exp"], ["max_experience", "f-max-exp"],
+    ["min_active_loans", "f-min-active"], ["max_active_loans", "f-max-active"],
+    ["min_secured_loans", "f-min-secured"], ["max_secured_loans", "f-max-secured"],
+    ["min_unsecured_loans", "f-min-unsecured"], ["max_unsecured_loans", "f-max-unsecured"],
+  ];
+  for (const [key, id, isAmount] of numbers) {
+    const v = readNum(id, isAmount);
+    if (v !== null) f[key] = v;
+  }
+
+  const slabs = {};
+  document.querySelectorAll("#slab-rows input").forEach((inp) => {
+    const raw = inp.value.trim();
+    if (!raw) return;
+    const v = Number(raw);
+    if (Number.isNaN(v)) throw new Error(`"${raw}" is not a valid number`);
+    const key = inp.dataset.slab;
+    slabs[key] = slabs[key] || { slab: key };
+    slabs[key][inp.dataset.end] = v;
+  });
+  if (Object.keys(slabs).length) f.slabs = Object.values(slabs);
+
+  if (document.getElementById("f-many-small").checked) f.many_small_loans = true;
+
+  const matches = [];
+  document.querySelectorAll("#loan-match-rows .lm-row").forEach((row) => {
+    const m = {};
+    const banks = checkedValues(row.querySelector("details.dd:nth-of-type(1)").id);
+    const types = checkedValues(row.querySelector("details.dd:nth-of-type(2)").id);
+    if (banks.length) m.bank = banks;
+    if (types.length) m.loan_type = types;
+    for (const [key, cls] of [["min_amount", ".lm-min"], ["max_amount", ".lm-max"]]) {
+      const raw = row.querySelector(cls).value;
+      const v = parseAmount(raw);
+      if (Number.isNaN(v)) throw new Error(`"${raw}" is not a valid amount`);
+      if (v !== null) m[key] = v;
+    }
+    const hasLoanPart = Object.keys(m).length > 0;
+    for (const [key, cls] of [["min_count", ".lm-cmin"], ["max_count", ".lm-cmax"]]) {
+      const raw = row.querySelector(cls).value.trim();
+      if (!raw) continue;
+      const v = Number(raw);
+      if (!Number.isInteger(v) || v < 0) throw new Error(`"${raw}" is not a valid number of loans`);
+      m[key] = v;
+    }
+    if (!hasLoanPart && Object.keys(m).length) {
+      throw new Error("A loan condition with a count also needs a bank, loan type or amount.");
+    }
+    if (Object.keys(m).length) matches.push(m);
+  });
+  if (matches.length) {
+    f.loan_matches = matches;
+    const mode = document.querySelector('input[name="lm-mode"]:checked');
+    if (mode && mode.value === "any" && matches.length > 1) f.loan_match_mode = "any";
+  }
+  return f;
+}
+
+async function applyFilters() {
+  updateFilterTabCounts();
+  const msg = document.getElementById("f-message");
+  const btn = document.getElementById("apply-filters-btn");
+  msg.style.color = "var(--slate)";
+  msg.textContent = "";
+  let body;
+  try {
+    body = collectFilters();
+    const nActive = Object.keys(body).length;
+    document.getElementById("f-active-count").textContent = nActive ? nActive + " on" : "";
+  } catch (e) {
+    msg.style.color = "var(--danger)";
+    msg.textContent = e.message;
+    return;
+  }
+  btn.disabled = true;
+  msg.textContent = "Working out the buckets…";
+  document.getElementById("f-bucket-grid").innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    lastAllocation = await apiFetch("/api/allocate", { method: "POST", body: JSON.stringify(body) });
+    fPage = 0;
+    msg.textContent = "";
+    renderFBuckets();
+    renderFLeads();
+  } catch (e) {
+    msg.style.color = "var(--danger)";
+    msg.textContent = e.message;
+    document.getElementById("f-bucket-grid").innerHTML = `<div class="empty-state">${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function clearFilters() {
+  document.querySelectorAll("#tab-filtered input[type=text], #tab-filtered input[type=month]").forEach((i) => { i.value = ""; });
+  document.querySelectorAll("#tab-filtered input[type=checkbox]").forEach((i) => { i.checked = false; });
+  document.querySelectorAll("#tab-filtered details.dd").forEach((d) => updateDdCount(d.id));
+  document.querySelectorAll("#tab-filtered label.chk").forEach((l) => { l.hidden = false; });
+  document.getElementById("loan-match-rows").innerHTML = "";
+  addLoanRow();
+  updateFilterTabCounts();
+  fBucket = null;
+  fSlot = null;
+  applyFilters();
+}
+
+function renderFBuckets() {
+  if (!lastAllocation) return;
+  const counts = lastAllocation.counts[fBucketType] || {};
+  const bucketKey = fBucketType + "_bucket";
+  const eligKey = fBucketType + "_eligibility";
+  const total = lastAllocation.total_leads || 0;
+
+  // Secured also has an "Insufficient data" group (income or FOIR missing).
+  let order = fBucketType === "secured" ? LADDER.concat(["Insufficient data"]) : LADDER.slice();
+  Object.keys(counts).forEach((k) => { if (!order.includes(k) && counts[k] > 0) order.push(k); });
+
+  // average eligibility inside each bucket
+  const sums = {};
+  (lastAllocation.leads || []).forEach((l) => {
+    const e = l[eligKey];
+    if (e == null) return;
+    const s = (sums[l[bucketKey]] = sums[l[bucketKey]] || { total: 0, n: 0 });
+    s.total += Number(e);
+    s.n += 1;
+  });
+
+  document.getElementById("f-bucket-grid").innerHTML = order.map((b) => {
+    const n = counts[b] ?? 0;
+    const pct = total ? Math.round((100 * n) / total) : 0;
+    const note = b === "Insufficient data"
+      ? "Income or FOIR missing"
+      : (sums[b] ? "Average " + fmtShort(sums[b].total / sums[b].n) : "No leads");
+    return `
+      <button type="button" class="bucket-cell ${fBucket === b ? "selected" : ""}" data-b="${esc(b)}"
+              onclick="selectFBucket('${b}')" aria-pressed="${fBucket === b}">
+        <span class="label">${esc(b)}</span>
+        <span class="count">${n}</span>
+        <span class="share">${pct}% of leads</span>
+        <span class="bar"><i style="width:${pct}%"></i></span>
+        <span class="avg">${note}</span>
+      </button>`;
+  }).join("");
+
+  const a = lastAllocation;
+  let text = `${a.total_leads} lead${a.total_leads === 1 ? "" : "s"} match`;
+  if (a.matched_rows > a.total_leads) text += `. ${a.matched_rows - a.total_leads} repeat application(s) of the same phone left out`;
+  if (a.errors) text += `. ${a.errors} could not be scored`;
+  document.getElementById("f-summary").textContent = text;
+  renderFSlots();
+}
+
+function selectFBucket(b) {
+  fBucket = (fBucket === b) ? null : b;
+  fPage = 0;
+  renderFBuckets();
+  renderFLeads();
+}
+
+function selectFSlot(s) {
+  fSlot = (fSlot === s) ? null : s;
+  fPage = 0;
+  renderFSlots();
+  renderFLeads();
+}
+
+// The four priority slots for the unsecured view, counted inside the chosen bucket.
+function renderFSlots() {
+  const wrap = document.getElementById("f-slots");
+  if (!lastAllocation || fBucketType !== "unsecured") { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const inBucket = (lastAllocation.leads || []).filter((l) => !fBucket || l.unsecured_bucket === fBucket);
+  const total = inBucket.length;
+  document.getElementById("f-slots-scope").textContent = fBucket ? "inside " + fBucket : "across all unsecured buckets";
+  const counts = {};
+  inBucket.forEach((l) => { counts[l.unsecured_slot] = (counts[l.unsecured_slot] || 0) + 1; });
+  document.getElementById("f-slot-grid").innerHTML = SLOTS.map((s) => {
+    const n = counts[s.id] || 0;
+    const pct = total ? Math.round((100 * n) / total) : 0;
+    return `
+      <button type="button" class="slot-cell ${fSlot === s.id ? "selected" : ""}" onclick="selectFSlot('${s.id}')"
+              aria-pressed="${fSlot === s.id}" title="${esc(s.help)}">
+        <span class="slot" data-s="${s.id}">${s.id}</span>
+        <span class="stitle">${esc(s.title)}</span>
+        <span class="scount">${n}</span>
+        <span class="sdesc">${pct}% of ${total}. ${esc(s.help)}</span>
+      </button>`;
+  }).join("");
+}
+
+function slotCell(l) {
+  if (!l.unsecured_slot) return "—";
+  const reasons = l.slot_reasons || [];
+  const more = reasons.length > 2 ? " +" + (reasons.length - 2) + " more" : "";
+  return `<span class="slot" data-s="${esc(l.unsecured_slot)}">${esc(l.unsecured_slot)}</span>
+    <div class="lead-sub" title="${esc(reasons.join("; "))}">${esc(reasons.slice(0, 2).join("; "))}${more}</div>`;
+}
+
+// On the lead page: which slot the lead is in and why (found from the loaded results).
+function slotDetailHtml(id) {
+  const l = lastAllocation && (lastAllocation.leads || []).find((x) => String(x.id) === String(id));
+  if (!l || !l.unsecured_slot) return "";
+  const info = SLOTS.find((s) => s.id === l.unsecured_slot);
+  return `<div class="slot-detail"><span class="slot" data-s="${esc(l.unsecured_slot)}">${esc(l.unsecured_slot)}</span>
+    <div><strong>Unsecured priority: ${esc(info ? info.title : "")}</strong>
+    <div class="lead-sub">${esc((l.slot_reasons || []).join("; "))}</div></div></div>`;
+}
+
+function fLeadsInView() {
+  if (!lastAllocation) return [];
+  return lastAllocation.leads.filter((l) =>
+    (!fBucket || l[fBucketType + "_bucket"] === fBucket) &&
+    (fBucketType !== "unsecured" || !fSlot || l.unsecured_slot === fSlot));
+}
+
+function shortText(t, n) {
+  const s = String(t ?? "").trim();
+  return s.length > n ? s.slice(0, n) + "…" : s;
+}
+
+function capTitle(lead, kind) {
+  const reasons = lead[kind + "_cap_reasons"] || [];
+  return reasons.length ? reasons.join(" ") : "";
+}
+
+// One bucket cell in the table: pill, the amount, and small notes on what moved it.
+function bucketCell(l, kind) {
+  const elig = l[kind + "_eligibility"];
+  const reasons = l[kind + "_cap_reasons"] || [];
+  let notes = "";
+  if (kind === "secured") {
+    const q = l.secured_quality;
+    if (reasons.some((r) => String(r).includes("CIBIL"))) notes += '<span class="mini cap">CIBIL cap</span>';
+    if (q && q.step > 0) notes += '<span class="mini up">Quality up</span>';
+    if (q && q.step < 0) notes += '<span class="mini down">Quality down</span>';
+    if (l.secured_tenure_years != null && l.secured_tenure_years < 20) {
+      notes += `<span class="mini">${Number(l.secured_tenure_years)} yr tenure</span>`;
+    }
+  }
+  return `${bucketBadge(l[kind + "_bucket"])}
+    <div class="lead-sub">${elig == null ? "" : esc(fmtShort(elig))}</div>
+    ${notes ? `<div class="minis">${notes}</div>` : ""}`;
+}
+
+function renderFLeads() {
+  const card = document.getElementById("f-leads-card");
+  const leads = fLeadsInView();
+  card.style.display = "block";
+  const label = fBucketType === "secured" ? "Secured" : "Unsecured";
+  document.getElementById("f-leads-title").textContent =
+    `${label}: ${fBucket || "all buckets"}${fBucketType === "unsecured" && fSlot ? ", " + fSlot : ""} (${leads.length} lead${leads.length === 1 ? "" : "s"})`;
+  const table = document.getElementById("f-leads-table");
+  if (!leads.length) {
+    document.getElementById("f-pager").innerHTML = "";
+    table.innerHTML = '<tr><td class="empty-state">No leads match these filters.</td></tr>';
+    return;
+  }
+  const showSlot = fBucketType === "unsecured";
+  const pages = Math.ceil(leads.length / F_PAGE_SIZE);
+  fPage = Math.min(fPage, pages - 1);
+  const slice = leads.slice(fPage * F_PAGE_SIZE, (fPage + 1) * F_PAGE_SIZE);
+  const emp = (l) => l.employment_type
+    ? esc(l.employment_type) + (l.employment_source === "derived" ? ' <span class="tag" title="Not written in the CAM - guessed from salary / profession">guessed</span>' : "")
+    : "—";
+  table.innerHTML = `
+    <thead><tr>
+      <th>Name</th><th>Status</th><th>Applied for</th><th>Income / month</th><th>CIBIL</th>
+      <th>Employment</th><th>Marital · House</th><th>Running loans</th>
+      <th>Secured</th><th>Unsecured</th>${showSlot ? "<th>Priority</th>" : ""}<th>MIS credit remark</th><th>MIS ops remark</th><th></th>
+    </tr></thead>
+    <tbody>${slice.map((l) => `
+      <tr>
+        <td><div class="lead-name" style="font-size:13px;">${esc(l.customer_name || "Unnamed")}</div>
+            <div class="lead-sub">${esc(l.customer_phone || "—")} · Ticket ${esc(l.ticket_id ?? "—")}</div></td>
+        <td>${statusBadge(l.ticket_status)}</td>
+        <td>${esc(l.loan_type || "—")}<div class="lead-sub">${fmtMoney(l.amount)}</div></td>
+        <td>${l.monthly_income == null ? "—" : fmtMoney(l.monthly_income)}</td>
+        <td>${l.cibil_score ?? "—"}</td>
+        <td>${emp(l)}</td>
+        <td>${esc(l.marital_status || "—")}<div class="lead-sub">${esc(l.house_type || "—")}</div></td>
+        <td>${l.active_loans ?? "—"}<div class="lead-sub">${l.active_secured_loans ?? 0} secured · ${l.active_unsecured_loans ?? 0} unsecured</div></td>
+        <td title="${esc(capTitle(l, "secured"))}">${bucketCell(l, "secured")}</td>
+        <td title="${esc(capTitle(l, "unsecured"))}">${bucketCell(l, "unsecured")}</td>
+        ${showSlot ? `<td>${slotCell(l)}</td>` : ""}
+        <td class="remark ${l.mis_credit_remark ? "rm-" + statusClass(l.ticket_status) : ""}" title="${esc(l.mis_credit_remark || "")}">${esc(shortText(l.mis_credit_remark, 70)) || "—"}</td>
+        <td class="remark ${l.mis_ops_remark ? "rm-" + statusClass(l.ticket_status) : ""}" title="${esc(l.mis_ops_remark || "")}">${esc(shortText(l.mis_ops_remark, 70)) || "—"}</td>
+        <td><button class="view-btn" onclick="viewStoredLead(${l.id})">View</button></td>
+      </tr>`).join("")}</tbody>`;
+  document.getElementById("f-pager").innerHTML = pages > 1 ? `
+    <button class="small-btn" ${fPage === 0 ? "disabled" : ""} onclick="fGoPage(-1)">Previous</button>
+    <span>Page ${fPage + 1} of ${pages}</span>
+    <button class="small-btn" ${fPage >= pages - 1 ? "disabled" : ""} onclick="fGoPage(1)">Next</button>` : "";
+}
+
+function fGoPage(step) {
+  fPage = Math.max(0, fPage + step);
+  renderFLeads();
+}
+
+function downloadFilteredLeads() {
+  const leads = fLeadsInView();
+  if (!leads.length) { alert("There are no leads to download."); return; }
+  const cols = [
+    ["Name", "customer_name"], ["Phone", "customer_phone"], ["Ticket", "ticket_id"], ["Status", "ticket_status"],
+    ["Loan type", "loan_type"], ["Amount", "amount"], ["State", "state"], ["City", "city"],
+    ["Monthly income", "monthly_income"], ["CIBIL", "cibil_score"], ["Employment", "employment_type"],
+    ["Marital status", "marital_status"], ["House type", "house_type"], ["Experience (yrs)", "experience_years"],
+    ["Running loans", "active_loans"], ["Running secured", "active_secured_loans"], ["Running unsecured", "active_unsecured_loans"],
+    ["Secured bucket", "secured_bucket"], ["Unsecured bucket", "unsecured_bucket"],
+    ["Secured eligibility", "secured_eligibility"], ["Unsecured eligibility", "unsecured_eligibility"],
+    ["Monthly surplus", "monthly_surplus"], ["Secured tenure (yrs)", "secured_tenure_years"],
+    ["Secured capacity bucket", "secured_capacity_bucket"],
+    ["Unsecured priority slot", "unsecured_slot"], ["Slot reasons", "slot_reason_text"],
+    ["MIS credit remark", "mis_credit_remark"], ["MIS ops remark", "mis_ops_remark"],
+    ["CAM link", "cam_url"],
+  ];
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+  // CAM link: an Excel HYPERLINK formula, so the cell is clickable ("Open CAM").
+  // Excel only allows links up to 255 characters; a longer one stays as plain text.
+  const value = (l, key) => {
+    const v = l[key];
+    if (key !== "cam_url" || !v) return v;
+    const url = String(v).trim();
+    if (!/^https?:\/\//i.test(url) || url.length > 255) return url;
+    return `=HYPERLINK("${url.replace(/"/g, '""')}","Open CAM")`;
+  };
+  const lines = [cols.map((c) => cell(c[0])).join(",")]
+    .concat(leads.map((l) => cols.map((c) => cell(value(l, c[1]))).join(",")));
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `leads_${fBucketType}_${(fBucket || "all").replace(/\s+/g, "_")}${fBucketType === "unsecured" && fSlot ? "_" + fSlot : ""}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+document.getElementById("apply-filters-btn").addEventListener("click", applyFilters);
+document.getElementById("clear-filters-btn").addEventListener("click", clearFilters);
+document.getElementById("add-loan-row-btn").addEventListener("click", addLoanRow);
+document.getElementById("f-download-btn").addEventListener("click", downloadFilteredLeads);
+document.getElementById("tab-filtered").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type === "text" && !e.target.classList.contains("dd-search")) applyFilters();
+});
+document.querySelectorAll("[data-fbucket-type]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("[data-fbucket-type]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    fBucketType = btn.dataset.fbucketType;
+    fBucket = null;
+    fSlot = null;
+    fPage = 0;
+    renderFBuckets();
+    renderFLeads();
+  });
+});
+
+// ---------------------------------------------------------- Lead detail for a stored lead
+
+function viewStoredLead(id) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+  document.querySelector('[data-tab="detail"]').classList.add("active");
+  document.getElementById("tab-detail").classList.add("active");
+  document.getElementById("phone-search-results").innerHTML = "";
+  loadStoredLeadDetail(id);
+}
+
+function kv(label, value) {
+  return `<div class="kv"><div class="k">${esc(label)}</div><div class="v">${value ?? "—"}</div></div>`;
+}
+
+// The secured bucket in five steps: surplus, amount, capacity bucket, quality, final.
+function securedPathHtml(cap) {
+  const m = cap.secured_method, q = cap.secured_quality;
+  if (!m || !q) return "";
+  if (cap.secured_missing_inputs && cap.secured_missing_inputs.length) {
+    return `<div class="note">The CAM does not give ${esc(cap.secured_missing_inputs.join(" and "))}, so a secured bucket cannot be worked out.</div>`;
+  }
+  const stepWord = q.step > 0 ? "Moved one step up" : q.step < 0 ? "Moved one step down" : "No step taken";
+  const tenureNote = !m.age_known ? "Age unknown, so the full tenure is assumed"
+    : m.tenure_limited_by_age ? "Shortened because of age" : "Full tenure";
+  const chips = (q.items || []).map((i) =>
+    `<span class="qchip ${i.points > 0 ? "plus" : "minus"}">${i.points > 0 ? "+" : "−"}${Math.abs(i.points)} ${esc(i.label)}</span>`).join("");
+  const capText = cap.secured_bucket_capped ? "A CIBIL cap lowered it" : "No cap applied";
+  return `
+    <div class="path">
+      <div class="step"><span class="n">1</span><div class="t">Monthly surplus</div>
+        <div class="v">${esc(fmtShort(cap.monthly_surplus))}</div>
+        <div class="s">Income × FOIR, minus running EMIs and monthly commitments</div></div>
+      <div class="step"><span class="n">2</span><div class="t">Loan amount it can repay</div>
+        <div class="v">${esc(fmtShort(cap.secured_cap_eligibility))}</div>
+        <div class="s">${Number(m.tenure_years_used)} years (${Math.round(Number(m.tenure_years_used) * 12)} months). ${tenureNote}</div></div>
+      <div class="step"><span class="n">3</span><div class="t">Capacity bucket</div>
+        <div class="v">${bucketBadge(cap.secured_capacity_bucket)}</div>
+        <div class="s">From the amount alone</div></div>
+      <div class="step"><span class="n">4</span><div class="t">Quality points</div>
+        <div class="v">${q.score > 0 ? "+" : ""}${q.score}</div>
+        <div class="s">${stepWord}. ${bucketBadge(cap.secured_bucket_after_quality)}</div></div>
+      <div class="step final"><span class="n">5</span><div class="t">Final secured bucket</div>
+        <div class="v">${bucketBadge(cap.secured_bucket)}</div>
+        <div class="s">${capText}</div></div>
+    </div>
+    ${chips ? `<div class="qchips">${chips}</div>` : ""}
+    <div class="hint" style="margin-bottom:10px;">Quality points: ${q.step_up_at} or more moves up one step, ${q.step_down_at} or less moves down one step.</div>`;
+}
+
+async function loadStoredLeadDetail(id) {
+  const el = document.getElementById("detail-result");
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const lead = await apiFetch(`/api/allocated-leads/${id}`);
+    const profile = lead.financial_profile || {};
+    const cap = profile.financial_capacity || {};
+    const stab = profile.financial_stability || {};
+
+    let remarksHtml = "";
+    try {
+      const remarks = await apiFetch(`/api/allocated-leads/${id}/remarks`);
+      remarksHtml = (remarks && remarks.length) ? remarks.map((r) => `
+        <div style="margin-bottom: 8px; padding: 10px; border-left: 3px solid var(--accent); background: var(--bg);">
+          <div style="font-size: 11px; color: var(--slate); margin-bottom: 4px;">
+            <strong>${esc(r.username)}</strong> at ${new Date(r.created_at).toLocaleString()}
+          </div>
+          <div style="font-size: 13px;">${esc(r.remark)}</div>
+        </div>`).join("") : '<div style="font-size:13px; color:var(--slate);">No remarks yet.</div>';
+    } catch (e) {
+      remarksHtml = '<div class="error-msg">Could not load remarks.</div>';
+    }
+
+    let asmtHtml = "";
+    try {
+      const items = await apiFetch(`/api/allocated-leads/${id}/assessments`);
+      asmtHtml = items.length ? items.map(asmtItemHtml).join("") : '<div class="lead-sub">Nothing written yet.</div>';
+    } catch (e) {
+      asmtHtml = '<div class="error-msg">Could not load this section.</div>';
+    }
+
+    const reasons = (list) => (list && list.length)
+      ? `<ul class="factor-list">${list.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : "";
+    const secReasons = reasons(cap.secured_bucket_cap_reasons);
+    const unsecReasons = reasons(cap.unsecured_bucket_cap_reasons);
+    const employment = lead.employment_type
+      ? esc(lead.employment_type) + (lead.employment_source === "derived" ? " (guessed - not written in the CAM)" : "")
+      : "—";
+
+    const loans = lead.tradelines || [];
+    const loansHtml = loans.length ? `
+      <div class="table-wrap"><table class="leads loans">
+        <thead><tr><th>Bank</th><th>Loan type</th><th>Secured?</th><th>Loan amount</th><th>Balance</th>
+        <th>EMI</th><th>Ends</th><th>Size</th><th>Today</th></tr></thead>
+        <tbody>${loans.map((t) => `
+          <tr>
+            <td>${esc(t.bank_clean || t.member_name || "—")}</td>
+            <td>${esc(t.loan_type_clean || t.loan_type || "—")}</td>
+            <td>${t.is_secured ? "Secured" : "Unsecured"}</td>
+            <td>${fmtMoney(t.sanction_amount == null ? null : Number(t.sanction_amount))}</td>
+            <td>${fmtMoney(t.current_balance == null ? null : Number(t.current_balance))}</td>
+            <td>${t.is_active ? fmtMoney(Number(t.emi_amount || 0)) : "—"}</td>
+            <td>${esc(t.end_date ? String(t.end_date).slice(0, 10) : "no end date")}</td>
+            <td>${esc(t.slab || "—")}</td>
+            <td><span class="tag ${t.is_active ? "ok" : "ended"}">${t.is_active ? "Running" : "Ended"}</span></td>
+          </tr>`).join("")}</tbody></table></div>`
+      : '<div class="lead-sub">No loans found in the CAM.</div>';
+
+    el.innerHTML = `
+      <div class="card">
+        <div class="detail-section">
+          <h4>Applicant</h4>
+          <div class="kv-grid">
+            ${kv("Name", esc(lead.customer_name))}
+            ${kv("Phone", esc(lead.customer_phone))}
+            ${kv("Ticket", esc(lead.ticket_id))}
+            ${kv("Applied for", esc(lead.loan_type) + " · " + fmtMoney(lead.amount == null ? null : Number(lead.amount)))}
+            ${kv("Status", statusBadge(lead.ticket_status))}
+            ${kv("Applied on", esc(lead.application_date ? String(lead.application_date).slice(0, 10) : null))}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Bucket decision (worked out today)</h4>
+          <div class="badges" style="margin-bottom:10px;">
+            Secured: ${bucketBadge(cap.secured_bucket)} &nbsp; Unsecured: ${bucketBadge(cap.unsecured_bucket)}
+          </div>
+          ${securedPathHtml(cap)}
+          ${slotDetailHtml(id)}
+          ${secReasons ? `<div class="lead-sub"><strong>How the secured bucket was reached</strong></div>${secReasons}` : ""}
+          ${unsecReasons ? `<div class="lead-sub"><strong>Why the unsecured bucket was lowered</strong></div>${unsecReasons}` : ""}
+          <div class="kv-grid" style="margin-top:10px;">
+            ${kv("Monthly income", fmtMoney(cap.monthly_income))}
+            ${kv("FOIR", cap.foir_percent == null ? "—" : cap.foir_percent + "%")}
+            ${kv("Existing EMI (running loans)", fmtMoney(cap.existing_emi))}
+            ${kv("Monthly surplus", fmtMoney(cap.monthly_surplus))}
+            ${kv("Secured eligibility", fmtMoney(cap.secured_cap_eligibility))}
+            ${kv("Unsecured eligibility", fmtMoney(cap.unsecured_cap_eligibility))}
+          </div>
+          ${cap.prior_disbursed_amount ? `<div class="lead-sub" style="margin-top:8px;">Already disbursed by F2 Fintech: ${fmtMoney(cap.prior_disbursed_amount)} (taken off both eligibilities).</div>` : ""}
+          ${profile.financial_capacity ? "" : '<div class="lead-sub">No bucket - this lead has no readable CAM.</div>'}
+        </div>
+
+        <div class="detail-section">
+          <h4>About the person</h4>
+          <div class="kv-grid">
+            ${kv("CIBIL score", lead.cibil_score ?? "—")}
+            ${kv("Employment type", employment)}
+            ${kv("Marital status", esc(lead.marital_status))}
+            ${kv("House type", esc(lead.house_type))}
+            ${kv("Experience", lead.experience_years == null ? "—" : lead.experience_years + " years")}
+            ${kv("Age", stab.age ?? lead.age ?? "—")}
+            ${kv("City · State", esc([lead.city, lead.state].filter(Boolean).join(", ")))}
+            ${kv("Profession", esc(lead.designation))}
+            ${kv("Highest qualification", esc(lead.highest_degree))}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Loans they already have</h4>
+          <div class="kv-grid" style="margin-bottom:10px;">
+            ${kv("Running today", (lead.tradelines || []).filter((t) => t.is_active).length)}
+            ${kv("Secured running", (lead.tradelines || []).filter((t) => t.is_active && t.is_secured).length)}
+            ${kv("Unsecured running", (lead.tradelines || []).filter((t) => t.is_active && !t.is_secured).length)}
+          </div>
+          ${loansHtml}
+        </div>
+
+        <div class="detail-section">
+          <h4>MIS remarks</h4>
+          <div class="lead-sub">Ticket status: ${statusBadge(lead.ticket_status)}</div>
+          ${remarkBox("Credit remark", lead.mis_credit_remark, lead.ticket_status)}
+          ${remarkBox("Ops remark", lead.mis_ops_remark, lead.ticket_status)}
+          ${lead.credit_remark ? `<div class="lead-sub" style="margin-top:8px;">CAM credit remark: ${esc(lead.credit_remark)}</div>` : ""}
+        </div>
+
+        <div class="detail-section" id="ai-explanation-section">
+          <h4>AI explanation</h4>
+          <button class="primary" style="padding: 6px 12px; margin-bottom: 12px; font-size: 12px; width: auto;" onclick="generateExplanation(${id}, '/api/allocated-leads')">Generate AI Explanation</button>
+          <div id="ai-explanation-content"></div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Eligibility: analyst vs banker</h4>
+          <div class="lead-sub">What our credit analyst found eligible, what the banker actually gave, and why they differ. Amounts in lakh (1 Cr = 100).</div>
+          <div class="lead-sub">System estimate for reference: secured ${fmtMoney(cap.secured_cap_eligibility)} · unsecured ${fmtMoney(cap.unsecured_cap_eligibility)}</div>
+          <div class="asmt-grid">
+            <label>Analyst eligibility (₹ lakh)<input type="number" min="0" step="any" id="asmt-analyst" oninput="asmtPreview()"></label>
+            <label>Banker eligibility (₹ lakh)<input type="number" min="0" step="any" id="asmt-banker" oninput="asmtPreview()"></label>
+          </div>
+          <div class="asmt-diff" id="asmt-diff"></div>
+          <textarea id="asmt-reason" style="width: 100%; min-height: 70px; margin: 8px 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; font-family: inherit; font-size: 13px;" placeholder="Reason for the difference (required when the two amounts differ)…"></textarea>
+          <button class="view-btn" onclick="saveAssessment(${id})">Save</button>
+          <div id="asmt-msg" class="run-msg err" style="margin-top:8px;"></div>
+          <div id="asmt-list">${asmtHtml}</div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Remarks</h4>
+          <div id="remarks-list" style="margin-bottom: 12px;">${remarksHtml}</div>
+          <textarea id="new-remark-text" style="width: 100%; min-height: 60px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; font-family: inherit; font-size: 13px;" placeholder="Add a new remark..."></textarea>
+          <button class="view-btn" onclick="addRemark(${id}, '/api/allocated-leads')">Add Remark</button>
+        </div>
+
+        ${lead.cam_url ? `<div class="detail-section"><h4>Source document</h4><a href="${esc(lead.cam_url)}" target="_blank" rel="noopener">Open CAM file</a></div>` : ""}
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state">${esc(e.message)}</div>`;
+  }
+}
+
+// ---------------------------------------------------------- filter panel show / hide
+(function setupRailToggle() {
+  const layout = document.getElementById("f-layout");
+  const btn = document.getElementById("rail-toggle");
+  const sync = () => { btn.textContent = layout.classList.contains("rail-hidden") ? "Show filters" : "Hide filters"; };
+  if (window.innerWidth < 1000) layout.classList.add("rail-hidden");
+  btn.addEventListener("click", () => { layout.classList.toggle("rail-hidden"); sync(); });
+  sync();
+})();
+
+// ---------------------------------------------------------- remember me: auto-login on page load
+// Placed at the end of the script, after everything it calls (enterApp,
+// initFilteredTab) has already been declared above.
+(function autoEnterApp() {
+  enterApp("bypass-token", { id: 1, username: "admin", email: "admin@f2fintech.in" });
+})();
+</script>
+
+</body>
+</html>
